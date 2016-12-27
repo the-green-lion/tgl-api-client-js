@@ -32,7 +32,7 @@ var tglApiClient = new function() {
                 count ++;
               
                 if (user) {
-                    console.log("Already logged in.");
+                    //console.log("Already logged in.");
                     if (callbackSuccess && firstRun) callbackSuccess();
                     
                 } else {
@@ -42,11 +42,11 @@ var tglApiClient = new function() {
                         contentType: "application/json; charset=utf-8",
                         dataType: "json",
                         success: function (response) {
-                            console.log("API login successfull");
+                            //console.log("API login successfull");
 
                             firebase.auth().signInWithCustomToken(response.Token)
                             .then(function(user) {
-                                console.log("Firebase login successfull");
+                                //console.log("Firebase login successfull");
                                 if (callbackSuccess && firstRun) callbackSuccess();
 
                             }, function(error) {
@@ -54,7 +54,7 @@ var tglApiClient = new function() {
                             });
                             
                         }, failure: function (error) {
-                            console.log("Failed obtaining token");
+                            //console.log("Failed obtaining token");
                             if (callbackFailed && firstRun) callbackFailed(error);
                         }
                     });
@@ -69,7 +69,7 @@ var tglApiClient = new function() {
     // --------------
     this.content = new function()
     {
-      // Get the IDs of all countries
+        // Get the IDs of all countries
         this.listContacts = function(callbackSuccess, callbackFailed) {
             this.listDocuments("contacts", callbackSuccess, callbackFailed);
         }
@@ -134,7 +134,7 @@ var tglApiClient = new function() {
         // Get a specific document by its ID
         this.getDocument = function(id, callbackSuccess, callbackFailed) {
             firebase.database().ref('/content/' + id).once('value').then(function(snapshot) {
-                console.log(snapshot.val());
+                //console.log(snapshot.val());
                 if (callbackSuccess) callbackSuccess(snapshot.val());
                 
             }, function(error) {
