@@ -3,6 +3,8 @@ TGL API Client
 
 Javascript client for TGL's REST API.
 
+You may also be interested in our [PHP](https://github.com/the-green-lion/tgl-api-client-php) and [.Net](https://github.com/the-green-lion/tgl-api-client-csharp) client libraries or our [Wordpress Plugin](https://github.com/the-green-lion/wp-tgl-content-insert).
+
 ##Dependencies
 This library depends on [firebase 3](https://firebase.google.com/docs/web/setup). Add at least the folllowing files:
 - https://www.gstatic.com/firebasejs/3.6.1/firebase-app.js
