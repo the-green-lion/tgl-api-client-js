@@ -31,14 +31,16 @@ var tglApiClient = new function() {
                 var firstRun = count == 0;
                 count ++;
               
-                if (user) {
+                // If user exists we are logged in. But maybe as an another user.
+                // Compare user ID (API key) and login again if wrong user.
+                if (user && user.uid == key) {
                     //console.log("Already logged in.");
                     if (callbackSuccess && firstRun) callbackSuccess();
                     
                 } else {
                     $.ajax({
                         type: "GET",
-                        url: "https://api.thegreenlion.net/AuthService.svc/LogInWithApiKey?key=" + key,
+                        url: "https://api.thegreenlion.net/user/" + key + "/authenticate",
                         contentType: "application/json; charset=utf-8",
                         dataType: "json",
                         success: function (response) {
@@ -140,6 +142,57 @@ var tglApiClient = new function() {
             }, function(error) {
                 if (callbackFailed) callbackFailed(error);
             });
+        }
+    }
+
+    // --------------
+    // BOOKING API
+    // --------------
+    this.bookings = new function()
+    {
+        var urlBookings = "https://api.thegreenlion.net/bookings/";
+
+        // Get booking with specified id
+        this.get = function(id, callbackSuccess, callbackFailed) {
+          executeCall("GET", id, null, callbackSuccess, callbackFailed);
+        }
+        
+        // Create new booking
+        this.create = function(booking, callbackSuccess, callbackFailed) {
+          executeCall("POST", null, booking, callbackSuccess, callbackFailed);
+        }
+        
+        // Update booking with specified id
+        this.update = function(id, booking, callbackSuccess, callbackFailed) {
+          executeCall("PUT", id, booking, callbackSuccess, callbackFailed);
+        }
+        
+        // Cancel booking with specified id
+        this.cancel = function(id, callbackSuccess, callbackFailed) {
+          executeCall("DELETE", id, null, callbackSuccess, callbackFailed);          
+        }
+        
+        /* ==================================
+            GENERIC METHODS
+           ================================== */
+
+        // Call the TGL bookings server 
+        function executeCall(command, id, booking, callbackSuccess, callbackFailed) {
+          var token = currentUser.getToken(false).then(function(idToken) {
+
+            $.ajax({
+              type: command,
+              url: urlBookings + id + "?auth=" + idToken,
+              data: JSON.stringify(booking),
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              success: callbackSuccess,
+              error: callbackFailed
+            });
+
+          }).catch(function(error) {
+            if (callbackFailed) callbackFailed(error);
+          });
         }
     }
 }
