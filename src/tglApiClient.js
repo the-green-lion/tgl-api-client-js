@@ -39,7 +39,7 @@ var tglApiClient = new function() {
                     
                 } else {
                     $.ajax({
-                        type: "GET",
+                        type: "POST",
                         url: "https://api.thegreenlion.net/user/" + key + "/authenticate",
                         contentType: "application/json; charset=utf-8",
                         dataType: "json",
