@@ -152,7 +152,7 @@ var tglApiClient = new function() {
     {
         var urlBookings = "https://api.thegreenlion.net/bookings";
 
-        // Get all bookings matching cer
+        // Get all bookings matching certain criteria
         this.list = function(filter, page, callbackSuccess, callbackFailed) {
           var parameters = "&page=" + page;
           if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
