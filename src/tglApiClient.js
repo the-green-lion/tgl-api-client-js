@@ -150,26 +150,38 @@ var tglApiClient = new function() {
     // --------------
     this.bookings = new function()
     {
-        var urlBookings = "https://api.thegreenlion.net/bookings/";
+        var urlBookings = "https://api.thegreenlion.net/bookings";
+
+        // Get all bookings matching cer
+        this.list = function(filter, page, callbackSuccess, callbackFailed) {
+          var parameters = "&page=" + page;
+          if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
+          if (filter.hasOwnProperty('dateStartBefore')) parameters += "&dateStartBefore=" + filter.dateStartBefore;
+          if (filter.hasOwnProperty('dateStartafter')) parameters += "&dateStartafter=" + filter.dateStartafter;
+          if (filter.hasOwnProperty('reference')) parameters += "&reference=" + filter.reference;
+          if (filter.hasOwnProperty('email')) parameters += "&email=" + filter.email;
+
+          executeCall("GET", '', parameters, null, callbackSuccess, callbackFailed);
+        }
 
         // Get booking with specified id
         this.get = function(id, callbackSuccess, callbackFailed) {
-          executeCall("GET", id, null, callbackSuccess, callbackFailed);
+          executeCall("GET", "/" + id, '', null, callbackSuccess, callbackFailed);
         }
         
         // Create new booking
         this.create = function(booking, callbackSuccess, callbackFailed) {
-          executeCall("POST", null, booking, callbackSuccess, callbackFailed);
+          executeCall("POST", '', '', booking, callbackSuccess, callbackFailed);
         }
         
         // Update booking with specified id
         this.update = function(id, booking, callbackSuccess, callbackFailed) {
-          executeCall("PUT", id, booking, callbackSuccess, callbackFailed);
+          executeCall("PUT", "/" + id, '', booking, callbackSuccess, callbackFailed);
         }
         
         // Cancel booking with specified id
         this.cancel = function(id, callbackSuccess, callbackFailed) {
-          executeCall("DELETE", id, null, callbackSuccess, callbackFailed);          
+          executeCall("DELETE", "/" + id, '', null, callbackSuccess, callbackFailed);          
         }
         
         /* ==================================
@@ -177,12 +189,12 @@ var tglApiClient = new function() {
            ================================== */
 
         // Call the TGL bookings server 
-        function executeCall(command, id, booking, callbackSuccess, callbackFailed) {
+        function executeCall(command, id, parameters, booking, callbackSuccess, callbackFailed) {
           var token = currentUser.getToken(false).then(function(idToken) {
 
             $.ajax({
               type: command,
-              url: urlBookings + id + "?auth=" + idToken,
+              url: urlBookings + id + "?auth=" + idToken + parameters,
               data: JSON.stringify(booking),
               contentType: "application/json; charset=utf-8",
               dataType: "json",
