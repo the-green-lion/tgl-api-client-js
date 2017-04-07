@@ -46,7 +46,7 @@ var tglApiClient = new function() {
                         success: function (response) {
                             //console.log("API login successfull");
 
-                            firebase.auth().signInWithCustomToken(response.Token)
+                            firebase.auth().signInWithCustomToken(response.token)
                             .then(function(user) {
                                 //console.log("Firebase login successfull");
                                 if (callbackSuccess && firstRun) callbackSuccess();
