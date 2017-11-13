@@ -63,6 +63,22 @@ var tglApiClient = new function() {
                 }
             });                        
         }
+
+        // Get the current firebase token
+        this. getToken = function(callbackSuccess, callbackFailed) {
+            if (currentUser == null) {
+                // We're not logged in
+                if (callbackFailed) callbackFailed(error);
+            }
+
+            // Loggen in. Now get the token
+            currentUser.getToken(false).then(function(idToken) {
+                if (callbackSuccess) callbackSuccess(idToken);              
+  
+            }).catch(function(error) {
+              if (callbackFailed) callbackFailed(error);
+            });
+          }
     }
     
     
