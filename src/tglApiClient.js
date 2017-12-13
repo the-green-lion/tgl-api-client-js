@@ -1,6 +1,6 @@
 var tglApiClient = new function() {
     // Variables
-    var currentUser;
+    var currentUser = null;
     
     // Initialize Firebase
     var config = {
@@ -23,24 +23,31 @@ var tglApiClient = new function() {
             }
         });
       
-      
         this.signInWithApiKey = function(key, callbackSuccess, callbackFailed) {
-            var count = 0;
-          
-            firebase.auth().onAuthStateChanged(function(user) {
-                var firstRun = count == 0;
-                count ++;
-              
+            this.signIn(key, '', callbackSuccess, callbackFailed);                 
+        }
+
+        this.signInWithEmailAndPassword = function(email, secret, callbackSuccess, callbackFailed) {
+            var key = encodeURIComponent(email);
+            this.signIn(key, secret, callbackSuccess, callbackFailed);
+        }
+             
+        this.signIn = function(key, secret, callbackSuccess, callbackFailed) {
+            var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+
+                // Unsubscribe of the event immediately. We only want to see once if we're logged in or not.
+                unsubscribe();
+
                 // If user exists we are logged in. But maybe as an another user.
                 // Compare user ID (API key) and login again if wrong user.
                 if (user && user.uid == key) {
                     //console.log("Already logged in.");
-                    if (callbackSuccess && firstRun) callbackSuccess();
+                    if (callbackSuccess) callbackSuccess();
                     
                 } else {
-                    $.ajax({
+                    jQuery.ajax({
                         type: "POST",
-                        url: "https://api.thegreenlion.net/user/" + key + "/authenticate",
+                        url: "https://api.thegreenlion.net/user/" + key + "/authenticate?secret=" + secret,
                         contentType: "application/json; charset=utf-8",
                         dataType: "json",
                         success: function (response) {
@@ -49,15 +56,16 @@ var tglApiClient = new function() {
                             firebase.auth().signInWithCustomToken(response.token)
                             .then(function(user) {
                                 //console.log("Firebase login successfull");
-                                if (callbackSuccess && firstRun) callbackSuccess();
+                                currentUser = user;
+                                if (callbackSuccess) callbackSuccess();
 
                             }, function(error) {
-                                if (callbackFailed && firstRun) callbackFailed(error);
+                                if (callbackFailed) callbackFailed(error);
                             });
                             
                         }, failure: function (error) {
                             //console.log("Failed obtaining token");
-                            if (callbackFailed && firstRun) callbackFailed(error);
+                            if (callbackFailed) callbackFailed(error);
                         }
                     });
                 }
@@ -65,13 +73,14 @@ var tglApiClient = new function() {
         }
 
         // Get the current firebase token
-        this. getToken = function(callbackSuccess, callbackFailed) {
+        this.getToken = function(callbackSuccess, callbackFailed) {
             if (currentUser == null) {
                 // We're not logged in
-                if (callbackFailed) callbackFailed(error);
+                if (callbackFailed) callbackFailed();
+                return;
             }
 
-            // Loggen in. Now get the token
+            // Logged in. Now get the token
             currentUser.getToken(false).then(function(idToken) {
                 if (callbackSuccess) callbackSuccess(idToken);              
   
@@ -208,7 +217,7 @@ var tglApiClient = new function() {
         function executeCall(command, id, parameters, booking, callbackSuccess, callbackFailed) {
           var token = currentUser.getToken(false).then(function(idToken) {
 
-            $.ajax({
+            jQuery.ajax({
               type: command,
               url: urlBookings + id + "?auth=" + idToken + parameters,
               data: JSON.stringify(booking),
