@@ -4,11 +4,25 @@ var tglApiClient = new function() {
     
     // Initialize Firebase
     var config = {
-      apiKey: "AIzaSyC5Fw0sHmxEg7-S1iylkQ68WN6X2rlGq8M",
-      authDomain: "tgl-api-20e32.firebaseapp.com",
-      databaseURL: "https://tgl-api-20e32.firebaseio.com"
+        authDomain: 'identity.thegreenlion.net',
+        apiKey: "AIzaSyC5Fw0sHmxEg7-S1iylkQ68WN6X2rlGq8M",
+        authDomain: "tgl-api-20e32.firebaseapp.com",
+        databaseURL: "https://tgl-api-20e32.firebaseio.com"
     };
     firebase.initializeApp(config);
+
+    this.refresh = function(callbackSuccess, callbackFailed){
+        
+        // If we mannually modify the auth state in the local storage
+        // Firebase will not reload by itself. So we can use this
+        // method to kill it and initialize it again.
+        firebase.app().delete().then(function() {
+            firebase.initializeApp(config);
+            if (callbackSuccess) callbackSuccess();
+        }, function(){
+            if (callbackFailed) callbackFailed();
+        });
+    }
 
     // --------------
     // AUTH
@@ -87,7 +101,26 @@ var tglApiClient = new function() {
             }).catch(function(error) {
               if (callbackFailed) callbackFailed(error);
             });
-          }
+        }
+
+        this.changePassword = function(currentPassword, newPassword, callbackSuccess, callbackFailed) {
+            // Call the TGL authentication server 
+            var token = currentUser.getToken(false).then(function(idToken) {
+                
+                jQuery.ajax({
+                    type: command,
+                    url: "https://api.thegreenlion.net/user/me/changepassword/" + currentPassword + "/" + newPassword + "?auth=" + idToken + parameters,
+                    data: JSON.stringify(booking),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: callbackSuccess,
+                    error: callbackFailed
+                });
+
+            }).catch(function(error) {
+                if (callbackFailed) callbackFailed(error);
+            });
+        }
     }
     
     
