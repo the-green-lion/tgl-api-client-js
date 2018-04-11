@@ -109,7 +109,7 @@ var tglApiClient = new function() {
                 
                 jQuery.ajax({
                     type: command,
-                    url: "https://api.thegreenlion.net/user/me/changepassword/" + currentPassword + "/" + newPassword + "?auth=" + idToken + parameters,
+                    url: "https://api.thegreenlion.net/user/me/secret/change/" + currentPassword + "/" + newPassword + "?auth=" + idToken + parameters,
                     data: JSON.stringify(booking),
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
