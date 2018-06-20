@@ -6,10 +6,21 @@ var tglApiClient = new function() {
     var config = {
         authDomain: 'identity.thegreenlion.net',
         apiKey: "AIzaSyC5Fw0sHmxEg7-S1iylkQ68WN6X2rlGq8M",
-        authDomain: "tgl-api-20e32.firebaseapp.com",
         databaseURL: "https://tgl-api-20e32.firebaseio.com"
     };
     firebase.initializeApp(config);
+
+    this.endpointBaseUrl = "https://api.thegreenlion.net/";
+
+    // Accept empty responses as valid JSON
+    // https://github.com/jquery/jquery/issues/3973
+    jQuery.ajaxSetup({
+        converters: {
+            "text json" : function(response) {
+                return (response == "") ? null : JSON.parse(response);
+            },
+        },
+    });
 
     this.refresh = function(callbackSuccess, callbackFailed){
         
@@ -37,10 +48,6 @@ var tglApiClient = new function() {
             }
         });
       
-        this.signInWithApiKey = function(key, callbackSuccess, callbackFailed) {
-            this.signIn(key, '', callbackSuccess, callbackFailed);                 
-        }
-
         this.signInWithEmailAndPassword = function(email, secret, callbackSuccess, callbackFailed) {
             var key = encodeURIComponent(email);
             this.signIn(key, secret, callbackSuccess, callbackFailed);
@@ -60,8 +67,8 @@ var tglApiClient = new function() {
                     
                 } else {
                     jQuery.ajax({
-                        type: "POST",
-                        url: "https://api.thegreenlion.net/user/" + key + "/authenticate?secret=" + secret,
+                        type: "GET",
+                        url: tglApiClient.endpointBaseUrl + "auth/user/" + key + "/authenticate?secret=" + secret,
                         contentType: "application/json; charset=utf-8",
                         dataType: "json",
                         success: function (response) {
@@ -77,7 +84,7 @@ var tglApiClient = new function() {
                                 if (callbackFailed) callbackFailed(error);
                             });
                             
-                        }, failure: function (error) {
+                        }, error: function (error) {
                             //console.log("Failed obtaining token");
                             if (callbackFailed) callbackFailed(error);
                         }
@@ -103,14 +110,22 @@ var tglApiClient = new function() {
             });
         }
 
+        
+    }
+
+    // --------------
+    // ADMIN
+    // --------------
+    this.admin = new function()
+    {
         this.changePassword = function(currentPassword, newPassword, callbackSuccess, callbackFailed) {
             // Call the TGL authentication server 
             var token = currentUser.getToken(false).then(function(idToken) {
                 
                 jQuery.ajax({
                     type: "POST",
-                    url: "https://api.thegreenlion.net/user/me/secret/change/" + currentPassword + "/" + newPassword + "?auth=" + idToken,
-                    dataType: "json",
+                    url: tglApiClient.endpointBaseUrl + "admin/user/me/secret/change?currentsecret=" + currentPassword + "&newsecret=" + newPassword + "&auth=" + idToken,
+                    //dataType: "json",
                     success: callbackSuccess,
                     error: callbackFailed
                 });
@@ -140,7 +155,7 @@ var tglApiClient = new function() {
         
         // Get the IDs of all countries
         this.listCountries = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("countries", callbackSuccess, callbackFailed);
+            this.listDocuments("country", callbackSuccess, callbackFailed);
         }
         
         // Get a specific country by its ID
@@ -151,7 +166,7 @@ var tglApiClient = new function() {
              
         // Get the IDs of all locations
         this.listLocations = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("locations", callbackSuccess, callbackFailed);
+            this.listDocuments("location", callbackSuccess, callbackFailed);
         }
         
         // Get a specific location by its ID
@@ -161,7 +176,7 @@ var tglApiClient = new function() {
         
         // Get the IDs of all programs
         this.listPrograms = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("programs", callbackSuccess, callbackFailed);
+            this.listDocuments("program", callbackSuccess, callbackFailed);
         }
         
         // Get a specific program by its ID
@@ -177,7 +192,7 @@ var tglApiClient = new function() {
         this.listDocuments = function(documentType, callbackSuccess, callbackFailed) {
             firebase.database().ref('/users/' + currentUser.uid).once('value').then(function(snapshotUser) {
             
-                firebase.database().ref('/permissions/' + snapshotUser.val().agentId + '/' + documentType).once('value').then(function(snapshot) {
+                firebase.database().ref('/content_index/' + snapshotUser.val().organizationId + '/' + documentType + "_by_id/all").once('value').then(function(snapshot) {
                     if (callbackSuccess) callbackSuccess(Object.keys(snapshot.val()));
 
                 }, function(error) {
@@ -204,12 +219,21 @@ var tglApiClient = new function() {
     // --------------
     // BOOKING API
     // --------------
-    this.bookings = new function()
+    this.booking = new function()
     {
-        var urlBookings = "https://api.thegreenlion.net/bookings";
+        //var urlBookingsUser = "https://api.thegreenlion.net/booking/user";
+        //var urlBookingsOrganization = "https://api.thegreenlion.net/booking/organization";
 
         // Get all bookings matching certain criteria
-        this.list = function(filter, page, callbackSuccess, callbackFailed) {
+        this.listBookingsOfUser = function(userId, filter, page, callbackSuccess, callbackFailed) {
+            listBookings("user", userId, filter, page, callbackSuccess, callbackFailed);
+        }
+
+        this.listBookingsOfOrganization = function(organizationId, filter, page, callbackSuccess, callbackFailed) {
+            listBookings("organization", organizationId, filter, page, callbackSuccess, callbackFailed);
+        }
+
+        function listBookings(entity, entityId, filter, page, callbackSuccess, callbackFailed) {
           var parameters = "&page=" + page;
           if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
           if (filter.hasOwnProperty('dateStartBefore')) parameters += "&dateStartBefore=" + filter.dateStartBefore;
@@ -217,27 +241,39 @@ var tglApiClient = new function() {
           if (filter.hasOwnProperty('reference')) parameters += "&reference=" + filter.reference;
           if (filter.hasOwnProperty('email')) parameters += "&email=" + filter.email;
 
-          executeCall("GET", '', parameters, null, callbackSuccess, callbackFailed);
+          executeCall("GET", entity, entityId, '', parameters, null, callbackSuccess, callbackFailed);
         }
 
         // Get booking with specified id
-        this.get = function(id, callbackSuccess, callbackFailed) {
-          executeCall("GET", "/" + id, '', null, callbackSuccess, callbackFailed);
+        this.getBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
+          executeCall("GET", "user", userId, "/" + id, '', null, callbackSuccess, callbackFailed);
+        }
+
+        this.getBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
+            executeCall("GET", "organization", organizationId, "/" + id, '', null, callbackSuccess, callbackFailed);
         }
         
         // Create new booking
-        this.create = function(booking, callbackSuccess, callbackFailed) {
-          executeCall("POST", '', '', booking, callbackSuccess, callbackFailed);
+        this.createBookingOfUser = function(userId, booking, callbackSuccess, callbackFailed) {
+          executeCall("POST", "user", userId, '', '', booking, callbackSuccess, callbackFailed);
         }
         
         // Update booking with specified id
-        this.update = function(id, booking, callbackSuccess, callbackFailed) {
-          executeCall("PUT", "/" + id, '', booking, callbackSuccess, callbackFailed);
+        this.updateBookingOfUser = function(userId, id, booking, callbackSuccess, callbackFailed) {
+          executeCall("PUT", "user", userId, "/" + id, '', booking, callbackSuccess, callbackFailed);
+        }
+        
+        this.updateBookingOfOrganization = function(organizationId, id, booking, callbackSuccess, callbackFailed) {
+            executeCall("PUT", "organization", organizationId, "/" + id, '', booking, callbackSuccess, callbackFailed);
         }
         
         // Cancel booking with specified id
-        this.cancel = function(id, callbackSuccess, callbackFailed) {
-          executeCall("DELETE", "/" + id, '', null, callbackSuccess, callbackFailed);          
+        this.cancelBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
+          executeCall("DELETE", "user", userId, "/" + id, '', null, callbackSuccess, callbackFailed);          
+        }
+
+        this.cancelBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
+            executeCall("DELETE", "organization", organizationId, "/" + id, '', null, callbackSuccess, callbackFailed);          
         }
         
         /* ==================================
@@ -245,12 +281,12 @@ var tglApiClient = new function() {
            ================================== */
 
         // Call the TGL bookings server 
-        function executeCall(command, id, parameters, booking, callbackSuccess, callbackFailed) {
+        function executeCall(command, entity, entityId, id, parameters, booking, callbackSuccess, callbackFailed) {
           var token = currentUser.getToken(false).then(function(idToken) {
 
             jQuery.ajax({
               type: command,
-              url: urlBookings + id + "?auth=" + idToken + parameters,
+              url: tglApiClient.endpointBaseUrl + "booking/" + entity + "/" + entityId + "/bookings" + id + "?auth=" + idToken + parameters,
               data: JSON.stringify(booking),
               contentType: "application/json; charset=utf-8",
               dataType: "json",
