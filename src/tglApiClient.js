@@ -24,12 +24,25 @@ var tglApiClient = new function() {
 
     this.refresh = function(callbackSuccess, callbackFailed){
         
-        // If we mannually modify the auth state in the local storage
+        // If we manually modify the auth state in the local storage
         // Firebase will not reload by itself. So we can use this
-        // method to kill it and initialize it again.
+        // method to kill it and initialize it again.        
         firebase.app().delete().then(function() {
+            currentUser = null;
             firebase.initializeApp(config);
-            if (callbackSuccess) callbackSuccess();
+            
+            // Our onAuthStateChanged observer that we created before doesn't work anymore after we deleted the app.
+            // Lets make a new one and run it once so we only call our success handler once we actually loaded the login
+            var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+                unsubscribe();
+
+                if (user) {
+                    currentUser = user;
+                    if (callbackSuccess) callbackSuccess();
+                } else {
+                    if (callbackFailed) callbackFailed();
+                }
+            });
         }, function(){
             if (callbackFailed) callbackFailed();
         });
