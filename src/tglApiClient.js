@@ -115,7 +115,7 @@ var tglApiClient = new function() {
             }
 
             // Logged in. Now get the token
-            currentUser.getToken(false).then(function(idToken) {
+            currentUser.getIdToken(false).then(function(idToken) {
                 if (callbackSuccess) callbackSuccess(idToken);              
   
             }).catch(function(error) {
@@ -133,12 +133,29 @@ var tglApiClient = new function() {
     {
         this.changePassword = function(currentPassword, newPassword, callbackSuccess, callbackFailed) {
             // Call the TGL authentication server 
-            var token = currentUser.getToken(false).then(function(idToken) {
+            var token = currentUser.getIdToken(false).then(function(idToken) {
                 
                 jQuery.ajax({
                     type: "POST",
                     url: tglApiClient.endpointBaseUrl + "admin/user/me/secret/change?currentsecret=" + currentPassword + "&newsecret=" + newPassword + "&auth=" + idToken,
                     //dataType: "json",
+                    success: callbackSuccess,
+                    error: callbackFailed
+                });
+
+            }).catch(function(error) {
+                if (callbackFailed) callbackFailed(error);
+            });
+        }
+
+        this.resetPassword = function(callbackSuccess, callbackFailed) {
+            // Call the TGL authentication server 
+            var token = currentUser.getIdToken(false).then(function(idToken) {
+                
+                jQuery.ajax({
+                    type: "POST",
+                    url: tglApiClient.endpointBaseUrl + "admin/user/me/secret/reset?&auth=" + idToken,
+                    dataType: "json",
                     success: callbackSuccess,
                     error: callbackFailed
                 });
@@ -295,7 +312,7 @@ var tglApiClient = new function() {
 
         // Call the TGL bookings server 
         function executeCall(command, entity, entityId, id, parameters, booking, callbackSuccess, callbackFailed) {
-          var token = currentUser.getToken(false).then(function(idToken) {
+          var token = currentUser.getIdToken(false).then(function(idToken) {
 
             jQuery.ajax({
               type: command,
