@@ -11,6 +11,7 @@ var tglApiClient = new function() {
     firebase.initializeApp(config);
 
     this.endpointBaseUrl = "https://api.thegreenlion.net/";
+    this.shallowMode = true;
 
     // Accept empty responses as valid JSON
     // https://github.com/jquery/jquery/issues/3973
@@ -172,9 +173,14 @@ var tglApiClient = new function() {
     // --------------
     this.content = new function()
     {
-        // Get the IDs of all countries
-        this.listContacts = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("contacts", callbackSuccess, callbackFailed);
+        // Get the IDs of all contacts
+        this.listContacts = function(callbackSuccess, callbackFailed, editedAfter = null) {
+            this.listDocuments("contacts", callbackSuccess, callbackFailed, editedAfter);
+        }
+
+        // Get the IDs of all contacts fulfilling a certain criteria
+        this.queryContacts = function(indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter = null) {
+            this.queryDocuments("contacts", indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter);
         }
         
         // Get a specific contacts doc by its ID
@@ -184,8 +190,13 @@ var tglApiClient = new function() {
         
         
         // Get the IDs of all countries
-        this.listCountries = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("country", callbackSuccess, callbackFailed);
+        this.listCountries = function(callbackSuccess, callbackFailed, editedAfter = null) {
+            this.listDocuments("country", callbackSuccess, callbackFailed, editedAfter);
+        }
+
+        // Get the IDs of all countriesfulfilling a certain criteria
+        this.queryCountries = function(indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter = null) {
+            this.queryDocuments("country", indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter);
         }
         
         // Get a specific country by its ID
@@ -195,18 +206,29 @@ var tglApiClient = new function() {
         
              
         // Get the IDs of all locations
-        this.listLocations = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("location", callbackSuccess, callbackFailed);
+        this.listLocations = function(callbackSuccess, callbackFailed, editedAfter = null) {
+            this.listDocuments("location", callbackSuccess, callbackFailed, editedAfter);
+        }
+
+        // Get the IDs of all locations fulfilling a certain criteria
+        this.queryLocations = function(indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter = null) {
+            this.queryDocuments("location", indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter);
         }
         
         // Get a specific location by its ID
         this.getLocation = function(id, callbackSuccess, callbackFailed) {
             this.getDocument(id, callbackSuccess, callbackFailed);
         }
+
         
         // Get the IDs of all programs
-        this.listPrograms = function(callbackSuccess, callbackFailed) {
-            this.listDocuments("program", callbackSuccess, callbackFailed);
+        this.listPrograms = function(callbackSuccess, callbackFailed, editedAfter = null) {
+            this.listDocuments("program", callbackSuccess, callbackFailed, editedAfter);
+        }
+
+        // Get the IDs of all programs fulfilling a certain criteria
+        this.queryPrograms = function(indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter = null) {
+            this.queryDocuments("program", indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter);
         }
         
         // Get a specific program by its ID
@@ -219,11 +241,26 @@ var tglApiClient = new function() {
            ================================== */
         
         // Get the IDs of all documents of a type
-        this.listDocuments = function(documentType, callbackSuccess, callbackFailed) {
+        this.listDocuments = function(documentType, callbackSuccess, callbackFailed, editedAfter = null) {
+            tglApiClient.content.queryDocuments(documentType, "id", "all", callbackSuccess, callbackFailed, editedAfter);            
+        }
+
+        // Get the IDs of all documents of a type fulfilling a certain criteria
+        this.queryDocuments = function(documentType, indexBy, indexValue, callbackSuccess, callbackFailed, editedAfter = null) {
             firebase.database().ref('/users/' + currentUser.uid).once('value').then(function(snapshotUser) {
-            
-                firebase.database().ref('/content_index/' + snapshotUser.val().organizationId + '/' + documentType + "_by_id/all").once('value').then(function(snapshot) {
-                    if (callbackSuccess) callbackSuccess(Object.keys(snapshot.val()));
+
+                var query= firebase.database().ref('/content_index/' + snapshotUser.val().organizationId + '/' + documentType + "_by_" + indexBy + "/" + indexValue);
+                if(editedAfter != null){
+                    query = query.orderByValue().startAt(editedAfter.toJSON());
+                }
+
+                query.once('value').then(function(snapshot) {
+                    var ids = [];
+                    if(snapshot.exists()){
+                        ids = Object.keys(snapshot.val());
+                    }
+
+                    if (callbackSuccess) callbackSuccess(ids);
 
                 }, function(error) {
                     if (callbackFailed) callbackFailed(error);
@@ -236,15 +273,41 @@ var tglApiClient = new function() {
         
         // Get a specific document by its ID
         this.getDocument = function(id, callbackSuccess, callbackFailed) {
+
+            // Load full doc or shallow version?
+            var documentId = id;
+            if(tglApiClient.shallowMode) documentId += "_slim";
+
+            getDocumentInternal(documentId, callbackSuccess, function(error, canRetry){
+                if(tglApiClient.shallowMode && canRetry){
+                    // Couldn't load the shallow doc. Try the full one.
+                    getDocumentInternal(id, callbackSuccess, callbackFailed);
+                }
+            });
+        }
+
+        // Get a specific document by its ID
+        function getDocumentInternal(id, callbackSuccess, callbackFailed) {
             firebase.database().ref('/content/' + id).once('value').then(function(snapshot) {
-                //console.log(snapshot.val());
+
+                // We have permission to access the doc but it doesn't exist
+                if(!snapshot.exists()){
+                    if (callbackFailed) callbackFailed("Document '" + id + "' doesn't exist", true);
+                    return;
+                }
+
+                // All good
                 if (callbackSuccess) callbackSuccess(snapshot.val());
                 
             }, function(error) {
-                if (callbackFailed) callbackFailed(error);
+
+                // We probably don't have permission to access the doc
+                // Could also be because the ID is invalid
+                if (callbackFailed) callbackFailed(error, false);
             });
         }
     }
+    
 
     // --------------
     // BOOKING API
@@ -276,11 +339,15 @@ var tglApiClient = new function() {
 
         // Get booking with specified id
         this.getBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
-          executeCall("GET", "user", userId, "/" + id, '', null, callbackSuccess, callbackFailed);
+          executeCall("GET", "user", userId, id, '', null, callbackSuccess, callbackFailed);
         }
 
         this.getBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
-            executeCall("GET", "organization", organizationId, "/" + id, '', null, callbackSuccess, callbackFailed);
+            executeCall("GET", "organization", organizationId, id, '', null, callbackSuccess, callbackFailed);
+        }
+
+        this.getBookingGlobal = function(id, callbackSuccess, callbackFailed) {
+            executeCall("GET", "all", '',  id, '', null, callbackSuccess, callbackFailed);
         }
         
         // Create new booking
@@ -290,20 +357,28 @@ var tglApiClient = new function() {
         
         // Update booking with specified id
         this.updateBookingOfUser = function(userId, id, booking, callbackSuccess, callbackFailed) {
-          executeCall("PUT", "user", userId, "/" + id, '', booking, callbackSuccess, callbackFailed);
+          executeCall("PUT", "user", userId, id, '', booking, callbackSuccess, callbackFailed);
         }
         
         this.updateBookingOfOrganization = function(organizationId, id, booking, callbackSuccess, callbackFailed) {
-            executeCall("PUT", "organization", organizationId, "/" + id, '', booking, callbackSuccess, callbackFailed);
+            executeCall("PUT", "organization", organizationId, id, '', booking, callbackSuccess, callbackFailed);
+        }
+
+        this.updateBookingGlobal = function(id, booking, callbackSuccess, callbackFailed) {
+            executeCall("PUT", "all", '',  id, '', booking, callbackSuccess, callbackFailed);
         }
         
         // Cancel booking with specified id
         this.cancelBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
-          executeCall("DELETE", "user", userId, "/" + id, '', null, callbackSuccess, callbackFailed);          
+          executeCall("DELETE", "user", userId, id, '', null, callbackSuccess, callbackFailed);          
         }
 
         this.cancelBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
-            executeCall("DELETE", "organization", organizationId, "/" + id, '', null, callbackSuccess, callbackFailed);          
+            executeCall("DELETE", "organization", organizationId, id, '', null, callbackSuccess, callbackFailed);          
+        }
+
+        this.cancelBookingGlobal = function(id, callbackSuccess, callbackFailed) {
+            executeCall("DELETE", "all", '',  id, '', null, callbackSuccess, callbackFailed);          
         }
         
         /* ==================================
@@ -316,7 +391,7 @@ var tglApiClient = new function() {
 
             jQuery.ajax({
               type: command,
-              url: tglApiClient.endpointBaseUrl + "booking/" + entity + "/" + entityId + "/bookings" + id + "?auth=" + idToken + parameters,
+              url: tglApiClient.endpointBaseUrl + "booking/" + entity + (entityId != '' ? "/" + entityId : '') + "/bookings" + (id != '' ? "/" + id : '') + "?auth=" + idToken + parameters,
               data: JSON.stringify(booking),
               contentType: "application/json; charset=utf-8",
               dataType: "json",
