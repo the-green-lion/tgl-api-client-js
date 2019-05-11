@@ -626,64 +626,61 @@
 
                 if (previousProgram == null || previousProgram.id != currentProgram.id) {
 
-                    // We're joining a new program. We need to check starting dates.                    
-                    tglProgramBuffer.LoadDocument(currentProgram.id, (programDocFull) => {
+                    // We're joining a new program. We need to check starting dates.
+                    var relevantDates = currentProgram.startingDates.find(x => x.year == currentWeekDate.getFullYear());
+                    if(relevantDates) {
 
-                        var relevantDates = programDocFull.startingDates.startingDates.find(x => x.year == currentWeekDate.getFullYear());
-                        if(relevantDates) {
+                        // Starting dates have been announced already. Lets check if the date matches
+                        if (!relevantDates.startsEveryWeek) {
 
-                            // Starting dates have been announced already. Lets check if the date matches
-                            if (!relevantDates.startsEveryWeek) {
+                            // If the program starts every week, that's easy
+                            // If it doesn't, we need to look at individual dates
+                            var currentWeekTicks = currentWeekDate.getTime();
+                            var startingDateTicks = currentProgram.startingDates
+                                .map(x => x.dates)
+                                .reduce(function(a, b){ return a.concat(b); })
+                                .map(d => new Date(d).getTime())
+                                .sort((a, b) => a - b);
 
-                                // If the program starts every week, that's easy
-                                // If it doesn't, we need to look at individual dates
-                                var currentWeekTicks = currentWeekDate.getTime();
-                                var startingDateTicks = programDocFull.startingDates.startingDates
-                                    .map(x => x.dates)
-                                    .reduce(function(a, b){ return a.concat(b); })
-                                    .map(d => new Date(d).getTime())
-                                    .sort((a, b) => a - b);
+                            if (!startingDateTicks.some(function(x){return x == currentWeekTicks})) {
 
-                                if (!startingDateTicks.some(function(x){return x == currentWeekTicks})) {
+                                // Program doesn't start on this date. Find alternative dates.
+                                var datesBefore = startingDateTicks.filter(function(x){return x < currentWeekTicks});
+                                var datesAfter = startingDateTicks.filter(function(x){return x > currentWeekTicks});
 
-                                    // Program doesn't start on this date. Find alternative dates.
-                                    var datesBefore = startingDateTicks.filter(function(x){return x < currentWeekTicks});
-                                    var datesAfter = startingDateTicks.filter(function(x){return x > currentWeekTicks});
+                                var dateString = "";
+                                if(datesBefore.length == 0 && datesAfter.length == 0) {
 
-                                    var dateString = "";
-                                    if(datesBefore.length == 0 && datesAfter.length == 0) {
+                                    dateString = "another week";
 
-                                        dateString = "another week";
+                                } else if (datesBefore.length > 0 && datesAfter.length == 0){
 
-                                    } else if (datesBefore.length > 0 && datesAfter.length == 0){
+                                    var dateBefore = new Date(datesBefore[datesBefore.length - 1]);
+                                    dateString = "on " + dateBefore.toLocaleDateString();
 
-                                        var dateBefore = new Date(datesBefore[datesBefore.length - 1]);
-                                        dateString = "on " + dateBefore.toLocaleDateString();
+                                } else if (datesBefore.length == 0 && datesAfter.length > 0){
 
-                                    } else if (datesBefore.length == 0 && datesAfter.length > 0){
+                                    var dateAfter = new Date(datesAfter[0]);
+                                    dateString = "on " + dateAfter.toLocaleDateString();
+                                    
+                                } else {
 
-                                        var dateAfter = new Date(datesAfter[0]);
-                                        dateString = "on " + dateAfter.toLocaleDateString();
-                                        
-                                    } else {
-
-                                        var dateBefore = new Date(datesBefore[datesBefore.length - 1]);
-                                        var dateAfter = new Date(datesAfter[0]);
-                                        dateString = "on " + dateBefore.toLocaleDateString() + " or " + dateAfter.toLocaleDateString();
-                                    }
-
-                                    $this.find(".message.startdate .date").text(dateString);
-                                    $this.find(".message.startdate").show();
+                                    var dateBefore = new Date(datesBefore[datesBefore.length - 1]);
+                                    var dateAfter = new Date(datesAfter[0]);
+                                    dateString = "on " + dateBefore.toLocaleDateString() + " or " + dateAfter.toLocaleDateString();
                                 }
+
+                                $this.find(".message.startdate .date").text(dateString);
+                                $this.find(".message.startdate").show();
                             }
-
-                        } else {
-
-                            // Starting dates haven't been announced yet
-                            $this.find(".message.startdate-not-announced .date").text(currentWeekDate.getFullYear());
-                            $this.find(".message.startdate-not-announced").show();
                         }
-                    }, tglBookingEditor.Options.CallbackCriticalError);
+
+                    } else {
+
+                        // Starting dates haven't been announced yet
+                        $this.find(".message.startdate-not-announced .date").text(currentWeekDate.getFullYear());
+                        $this.find(".message.startdate-not-announced").show();
+                    }
                 }
 
 
