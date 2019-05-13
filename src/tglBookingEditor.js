@@ -1,3 +1,9 @@
+/**
+ * Allows to load, display, modify and save bookings
+ *
+ * @author  Bernhard Gessler
+ * @version 1.0.1
+ */
 (function( $ ) {
 
     window.tglBookingEditor = new function() {

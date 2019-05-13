@@ -1,3 +1,9 @@
+/**
+ * Javascript client for TGL's REST API.
+ *
+ * @author  Bernhard Gessler
+ * @version 1.0.0
+ */
 var tglApiClient = new function() {
     // Variables
     var currentUser = null;

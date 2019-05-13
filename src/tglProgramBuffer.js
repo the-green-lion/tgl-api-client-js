@@ -1,8 +1,13 @@
+/**
+ * Loads program info and buffers it locally so single page apps can access it more efficiently
+ *
+ * @author  Bernhard Gessler
+ * @version 1.0.2
+ */
 (function( $ ) {
 
     window.tglProgramBuffer = new function() {
 
-        var timerLoaded;
         this.BufferSearch;
         var bufferFull = {};   
         this.BufferShort = {};

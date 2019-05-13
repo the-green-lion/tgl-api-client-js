@@ -1,3 +1,9 @@
+/**
+ * Loads and evaluates permissions of the current user
+ *
+ * @author  Bernhard Gessler
+ * @version 1.0.0
+ */
 (function( $ ) {
 
     window.PermissionEntityEnum = {"None": 0, "Own":1, "Organization":2, "All":3};

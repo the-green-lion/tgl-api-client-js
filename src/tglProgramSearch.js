@@ -1,3 +1,9 @@
+/**
+ * Provides fast client side search using the tglProgramBuffer
+ *
+ * @author  Bernhard Gessler
+ * @version 1.0.0
+ */
 (function( $ ) {
     $.fn.tglProgramSearch = function (options) {
 
