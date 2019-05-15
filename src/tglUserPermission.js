@@ -2,7 +2,7 @@
  * Loads and evaluates permissions of the current user
  *
  * @author  Bernhard Gessler
- * @version 1.0.0
+ * @version 1.1.0
  */
 (function( $ ) {
 
@@ -34,17 +34,38 @@
                 currentUserId = impersonateUserId;
             }
 
-            firebase.database().ref('/users/' + currentUserId).once('value').then(function(snapshotUser) {
+            // Remember for later
+            tglUserPermission.CurrentUserId = currentUserId;
 
-                var user = snapshotUser.val();
-                var permissions = user.scopes;
+            // Load from local storage, if we have buffered the user there
+            if(localStorage["tgl_user_" + currentUserId]){
+                var user = JSON.parse(localStorage["tgl_user_" + currentUserId]);
+                parseUser(user);
+                if(callbackSuccess) callbackSuccess();
 
-                // Remember for later
-                tglUserPermission.CurrentUserId = currentUserId;
-                tglUserPermission.CurrentUserOrganizationId = user.organizationId;
+                // Even though we loaded the localy buffered user and are good to go
+                // let's download the user again and update our buffer.
+                // So next time we load the page we have an up-to-date user.
+                setTimeout(function(){ 
+                    loadUser(currentUserId);
+                 }, 1000);
+
+            } else{
+
+                // Nothing buffered locally. Load and return user.
+                loadUser(currentUserId, callbackSuccess, callbackFailed)
+            }
+        }
+
+        function loadUser(userId, callbackSuccess, callbackFailed){
+            firebase.database().ref('/users/' + userId).once('value').then(function(snapshotUser) {
 
                 // Interpret all permissions
-                loadPermissions(permissions);
+                var user = snapshotUser.val();
+                parseUser(user);
+
+                // Save for later                
+                localStorage.setItem("tgl_user_" + userId, JSON.stringify(user));
 
                 if(callbackSuccess) callbackSuccess();
 
@@ -53,8 +74,14 @@
             });
         }
 
-        function loadPermissions(permissions) {
+        function parseUser(user) {
             
+            // Remember for later            
+            tglUserPermission.CurrentUserOrganizationId = user.organizationId;
+
+            // Parse Permissions
+            var permissions = user.scopes;
+
             // Check if the user can create bookings
             if(permissions.hasOwnProperty("booking_all_create")) {                    
                 tglUserPermission.PermissionCreateEntity = PermissionEntityEnum.All;

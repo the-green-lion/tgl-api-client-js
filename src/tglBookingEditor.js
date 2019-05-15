@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.0.1
+ * @version 1.1.1
  */
 (function( $ ) {
 
@@ -169,12 +169,23 @@
                     tglBookingEditor.Options.FieldContainer.find("select").prop( "disabled", true );
                 }
 
-                // Load the organization doc of the organization that made the booking
-                tglApiClient.content.getDocument(booking.organizationId, function(organizationDoc){
+                // If we are only allowed to edit the booking before arrival, we need to consider the organization specific cancellation deadline
+                if(tglBookingEditor.Options.AllowEditBeforeTrip && !tglBookingEditor.Options.AllowEditDuringTrip && !tglBookingEditor.Options.AllowEditAfterTrip){
+                    
+                    // Load the organization doc of the organization that made the booking
+                    getOrganization(booking.organizationId, function(organizationDoc){
+                        setEditability(organizationDoc.invoicing.cancellationPeriod.value);
+                    }, callbackFailed);
+                } else{
 
+                    // We're still allowed to edit the booking later on so we set no cancellation period
+                    setEditability(0);
+                }
+
+                function setEditability(cancellationPeriod){
                     // Once the cancellation period passed, the partner can still modify the pax details but not anymore the itinerary, start date.
                     // Also no more cancellations.
-                    var dateCancellationLimit = localDateStart.addDays(-organizationDoc.invoicing.cancellationPeriod.value);
+                    var dateCancellationLimit = localDateStart.addDays(-cancellationPeriod);
 
                     // If we're past the cancellation period and have no further editing capabilities, we can't modify the itinerary anymore
                     isItineraryEditable = isEditable;                    
@@ -188,6 +199,36 @@
                     }
 
                     if(callbackSuccess) callbackSuccess(isEditable, isItineraryEditable, isCancelable);
+                }
+            }
+
+            function getOrganization(organizationId, callbackSuccess, callbackFailed){
+                // Load from local storage, if we have buffered the organization there
+                if(localStorage["tgl_organization_" + organizationId]){
+                    var organization = JSON.parse(localStorage["tgl_organization_" + organizationId]);
+                    if(callbackSuccess) callbackSuccess(organization);
+
+                    // Even though we loaded the localy buffered organization and are good to go
+                    // let's download the organization again and update our buffer.
+                    // So next time we load the page we have an up-to-date user.
+                    setTimeout(function(){ 
+                        loadOrganization(organizationId);
+                    }, 1000);
+
+                } else{
+
+                    // Nothing buffered locally. Load and return organization.
+                    loadOrganization(organizationId, callbackSuccess, callbackFailed)
+                }
+            }
+
+            function loadOrganization(organizationId, callbackSuccess, callbackFailed){
+                // Load the organization doc of the organization that made the booking
+                tglApiClient.content.getDocument(organizationId, function(organizationDoc){
+
+                    // Save for later                
+                    localStorage.setItem("tgl_organization_" + organizationId, JSON.stringify(organizationDoc));
+                    if(callbackSuccess) callbackSuccess(organizationDoc);
 
                 }, callbackFailed);
             }
@@ -405,11 +446,11 @@
                 today.setHours(0,0,0,0);
 
                 // Find the latest price that already applies
-                var priceDates = Object.keys(tglProgramBuffer.BufferShort[newProgramId].price);
+                var priceDates = Object.keys(tglContentBuffer.Buffer[newProgramId].price.prices);
                 priceDates = priceDates.filter(x => new Date(x) <= today).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
                 var effectiveDate = priceDates[priceDates.length - 1];
 
-                return tglProgramBuffer.BufferShort[newProgramId].price[effectiveDate];
+                return tglContentBuffer.Buffer[newProgramId].price.prices[effectiveDate];
             }
         }
         
@@ -446,7 +487,7 @@
         }
 
         function createItineraryItem(index, programId) {
-            var currentProgram = tglProgramBuffer.BufferShort[programId];
+            var currentProgram = tglContentBuffer.Buffer[programId];
             if(currentProgram === undefined){
                 tglBookingEditor.Options.CallbackCriticalError("Couldn't load program '" + programId + "'");
                 return;
@@ -454,18 +495,18 @@
 
             var currentWeekDate = localDateStart.addDays(index * 7);            
             var context = {
-                id: currentProgram.id,
-                location: currentProgram.location,
-                country: currentProgram.country,
-                imageUrl: currentProgram.imageMedium,
-                title: currentProgram.title,
+                id: currentProgram.documentId,
+                location: tglContentBuffer.GetProgramLocationString(currentProgram),
+                country: currentProgram.country.name,
+                imageUrl: currentProgram.media.images[0].sizes.find(elem => elem.size === "480, 360").url,
+                title: currentProgram.documentName,
                 price: tglBookingEditor.Booking.programs[index].price,
                 dateStart: currentWeekDate.toLocaleDateString(),
                 dateEnd: currentWeekDate.addDays(4).toLocaleDateString(),
-                durationMin: currentProgram.durationMin,
-                durationMax: currentProgram.durationMax,
-                ageMin: currentProgram.ageMin,
-                ageMax: currentProgram.ageMax,
+                durationMin: currentProgram.availability.minDuration.value,
+                durationMax: currentProgram.availability.maxDuration ? currentProgram.availability.maxDuration.value : null,
+                ageMin: currentProgram.requirements.requirementMinimumAge ? currentProgram.requirements.requirementMinimumAge.value : null,
+                ageMax: currentProgram.requirements.requirementMaximumAge ? currentProgram.requirements.requirementMaximumAge.value : null,
                 sequenceNr: index
             };
 
@@ -557,12 +598,12 @@
 
             function validateWeek(index, $this, items) {
                 // Get current element
-                var currentProgram = tglProgramBuffer.BufferShort[$this.data("id")];
+                var currentProgram = tglContentBuffer.Buffer[$this.data("id")];
 
                 // Get program of the previous week
                 var previousProgram = null;
                 if (index > 0) {
-                    previousProgram = tglProgramBuffer.BufferShort[$(items[index - 1]).data("id")];                
+                    previousProgram = tglContentBuffer.Buffer[$(items[index - 1]).data("id")];                
                 }
 
                 // Copy the current date
@@ -572,27 +613,28 @@
                 $this.find(".message").hide();
 
                 // Count how often we already had this program. Not necessarily consecutive.
-                if (!programCount.hasOwnProperty(currentProgram.id)) {
-                    programCount[currentProgram.id] = 0;
+                if (!programCount.hasOwnProperty(currentProgram.documentId)) {
+                    programCount[currentProgram.documentId] = 0;
                 }
-                programCount[currentProgram.id]++;
+                programCount[currentProgram.documentId]++;
 
 
                 /*** CHECK 1: MINIMUM DURATION ***/
 
                 // Memorize how often in a row we had this program.
-                if (previousProgram == null || previousProgram.id != currentProgram.id) {
+                if (previousProgram == null || previousProgram.documentId != currentProgram.documentId) {
                     currentProgramCount = 1;
                 } else {
                     currentProgramCount++;
                 }
 
                 if(index == items.length - 1 // This is the last item in the trip
-                    || $(items[index + 1]).data("id") != currentProgram.id) { // Not the last but next week we do a different program
+                    || $(items[index + 1]).data("id") != currentProgram.documentId) { // Not the last but next week we do a different program
 
                     // This week we have a different program than last week
                     // If ths is not the first week, we need to check if the previous program completed the minimum duration
-                    if (currentProgram.durationMin != null && currentProgramCount < currentProgram.durationMin) {
+                    var durationMin = currentProgram.availability.minDuration.value;
+                    if (durationMin != null && currentProgramCount < durationMin) {
                         $this.find(".message.duration-min").show();
                     }
                 }
@@ -600,40 +642,49 @@
                 
                 /*** CHECK 2: MAXIMUM DURATION ***/
 
-                if (currentProgram.durationMax != null && programCount[currentProgram.id] > currentProgram.durationMax) {
+                var durationMax = currentProgram.availability.maxDuration ? currentProgram.availability.maxDuration.value : null;
+                if (durationMax != null && programCount[currentProgram.id] > durationMax) {
                     $this.find(".message.duration-max").show();
                 }
 
 
                 /*** CHECK 3: AVAILABLE/BOOKABLE FROM/TO ***/
-                if (currentWeekDate < currentProgram.availableFrom) {
-                    $this.find(".message.available-from .date").text(currentProgram.availableFrom.toLocaleDateString());
+
+                var availableFrom = new Date(currentProgram.availability.availableFrom);
+                var availableUntil = currentProgram.availability.availableUntil ? new Date(currentProgram.availability.availableUntil.value) : null;
+
+                if (currentWeekDate < availableFrom) {
+                    $this.find(".message.available-from .date").text(availableFrom.toLocaleDateString());
                     $this.find(".message.available-from").show();
                 }
 
-                if (currentProgram.availableUntil != null && currentWeekDate > currentProgram.availableUntil) {
-                    $this.find(".message.available-until .date").text(dateAvailableUntil.toLocaleDateString());
+                if (availableUntil != null && currentWeekDate > availableUntil) {
+                    $this.find(".message.available-until .date").text(availableUntil.toLocaleDateString());
                     $this.find(".message.available-until").show();
-                }          
+                }
+
 
                 /*** CHECK 4: AGE ***/
 
+                var ageMin = currentProgram.requirements.requirementMinimumAge ? currentProgram.requirements.requirementMinimumAge.value : null;
+                var ageMax = currentProgram.requirements.requirementMaximumAge ? currentProgram.requirements.requirementMaximumAge.value : null;
+
                 var birthday = new Date(tglBookingEditor.Booking.participant.birthday);
                 var ageAtTime = calculateAge(birthday, currentWeekDate);
-                if (currentProgram.ageMin != null && ageAtTime < currentProgram.ageMin) {
+                if (ageMin != null && ageAtTime < ageMin) {
                     $this.find(".message.age-min").show();
                 }
-                if (currentProgram.ageMax != null && ageAtTime > currentProgram.ageMax) {
+                if (ageMax != null && ageAtTime > ageMax) {
                     $this.find(".message.age-max").show();
                 }
 
 
                 /*** CHECK 5: PROGRAM STARTING DATE ***/
 
-                if (previousProgram == null || previousProgram.id != currentProgram.id) {
+                if (previousProgram == null || previousProgram.documentId != currentProgram.documentId) {
 
                     // We're joining a new program. We need to check starting dates.
-                    var relevantDates = currentProgram.startingDates.find(x => x.year == currentWeekDate.getFullYear());
+                    var relevantDates = currentProgram.startingDates.startingDates.find(x => x.year == currentWeekDate.getFullYear());
                     if(relevantDates) {
 
                         // Starting dates have been announced already. Lets check if the date matches
@@ -642,7 +693,7 @@
                             // If the program starts every week, that's easy
                             // If it doesn't, we need to look at individual dates
                             var currentWeekTicks = currentWeekDate.getTime();
-                            var startingDateTicks = currentProgram.startingDates
+                            var startingDateTicks = currentProgram.startingDates.startingDates
                                 .map(x => x.dates)
                                 .reduce(function(a, b){ return a.concat(b); })
                                 .map(d => new Date(d).getTime())
@@ -692,9 +743,9 @@
 
                 /*** CHECK 6: HOLIDAYS ***/
 
-                tglProgramBuffer.LoadDocument(currentProgram.id, (programDocFull) => {
-                    // tglProgramBuffer.LoadDocument(programDocFull.locations[0].id, (locationDocFull) => {
-                    //     tglProgramBuffer.LoadDocument(locationDocFull.holidays.id, (holidayDocFull) => {
+                tglContentBuffer.LoadDocument(currentProgram.documentId, (programDocFull) => {
+                    // tglContentBuffer.LoadDocument(programDocFull.locations[0].id, (locationDocFull) => {
+                    //     tglContentBuffer.LoadDocument(locationDocFull.holidays.id, (holidayDocFull) => {
                             
                             // TODO: Show holidays that could affect the program
 

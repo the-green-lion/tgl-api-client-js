@@ -1,8 +1,8 @@
 /**
- * Provides fast client side search using the tglProgramBuffer
+ * Provides fast client side search using the tglContentBuffer
  *
  * @author  Bernhard Gessler
- * @version 1.0.0
+ * @version 1.1.2
  */
 (function( $ ) {
     $.fn.tglProgramSearch = function (options) {
@@ -87,8 +87,8 @@
         this.Search = function() {
             var resultItems = null;
             if ($searchField.val().length >= instance.Options.MinimumCharactersForSearch) {
-                results = tglProgramBuffer.BufferSearch.search($searchField.val());                                        
-                resultItems = results.map(x => tglProgramBuffer.BufferShort[x.ref]);
+                results = tglContentBuffer.Index.search($searchField.val());                                        
+                resultItems = results.map(x => tglContentBuffer.Buffer[x.ref]);
             }
                                 
             renderSearchResults(filterAndSort(resultItems));
@@ -114,7 +114,7 @@
     
             // If we're not typing anything into search yet, show all programs
             if(resultItems == null && instance.Options.ShowAllIfEmpty){
-                resultItems = Object.values(tglProgramBuffer.BufferShort).sort((a,b) => a.title.localeCompare(b.title));
+                resultItems = Object.values(tglContentBuffer.Buffer).filter(x => x.documentType == "Program").sort((a,b) => a.documentName.localeCompare(b.title));
             }
 
             // Apply any additional filtering
@@ -141,10 +141,10 @@
                 for (i = 0; i < resultItems.length; i++) {
         
                     var context = {
-                        id: resultItems[i].id,
-                        location: resultItems[i].location,
-                        imageUrl: resultItems[i].imageMedium,
-                        title: resultItems[i].title,
+                        id: resultItems[i].documentId,
+                        location: tglContentBuffer.GetProgramLocationString(resultItems[i]),
+                        imageUrl: resultItems[i].media.images[0].sizes.find(elem => elem.size === "480, 360").url,
+                        title: resultItems[i].documentName,
                         //price: 7,          
                     };
     
