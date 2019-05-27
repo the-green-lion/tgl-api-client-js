@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.1.1
+ * @version 1.1.3
  */
 (function( $ ) {
 
@@ -113,13 +113,8 @@
         
         this.LoadBooking = function(callbackSuccess, callbackFailed) {
 
-            if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Own) {
-                tglApiClient.booking.getBookingOfUser(tglBookingEditor.Options.UserId, tglBookingEditor.Options.BookingId, booking => bookingLoaded(booking), callbackFailed);
-            } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Organization) {
-                tglApiClient.booking.getBookingOfOrganization(tglBookingEditor.Options.UserOrganizationId, tglBookingEditor.Options.BookingId, booking => bookingLoaded(booking), callbackFailed);
-            } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.All) {
-                tglApiClient.booking.getBookingGlobal(tglBookingEditor.Options.BookingId, booking => bookingLoaded(booking), callbackFailed);
-            }
+
+            tglApiClient.booking.getBooking(tglBookingEditor.Options.BookingId, booking => bookingLoaded(booking), callbackFailed);
 
             function bookingLoaded(booking) {
 
@@ -255,18 +250,12 @@
             if(tglBookingEditor.Options.BookingId != null) {
 
                 // Edit an existing booking
-                if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Own) {
-                    tglApiClient.booking.updateBookingOfUser(tglBookingEditor.Options.UserId, tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);
-                } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Organization) {
-                    tglApiClient.booking.updateBookingOfOrganization(tglBookingEditor.Options.UserOrganizationId, tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);
-                } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.All) {
-                    tglApiClient.booking.updateBookingGlobal(tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);
-                }
+                tglApiClient.booking.updateBooking(tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);                
 
             } else {
 
                 // Create a new booking
-                tglApiClient.booking.createBookingOfUser(tglBookingEditor.Options.UserId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);
+                tglApiClient.booking.createBooking(tglBookingEditor.Booking, tglBookingEditor.Options.UserId, callbackSuccess, callbackFailed);
             }
         }
 
@@ -276,13 +265,7 @@
                 return;
             }
 
-            if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Own) {
-                tglApiClient.booking.cancelBookingOfUser(tglBookingEditor.Options.UserId, tglBookingEditor.Booking.bookingId, callbackSuccess, callbackFailed);
-            } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.Organization) {
-                tglApiClient.booking.cancelBookingOfOrganization(tglBookingEditor.Options.UserOrganizationId, tglBookingEditor.Booking.bookingId, callbackSuccess, callbackFailed);
-            } else if(tglUserPermission.PermissionReadEntity == PermissionEntityEnum.All) {
-                tglApiClient.booking.cancelBookingGlobal(tglBookingEditor.Booking.bookingId, callbackSuccess, callbackFailed);
-            }        
+            tglApiClient.booking.cancelBooking(tglBookingEditor.Booking.bookingId, callbackSuccess, callbackFailed);
         }
 
         this.AddProgram = function(id){
@@ -631,8 +614,8 @@
                 if(index == items.length - 1 // This is the last item in the trip
                     || $(items[index + 1]).data("id") != currentProgram.documentId) { // Not the last but next week we do a different program
 
-                    // This week we have a different program than last week
-                    // If ths is not the first week, we need to check if the previous program completed the minimum duration
+                    // Next week we have a different program than this week or the trip ends
+                    // We need to check if the current program completed the minimum duration
                     var durationMin = currentProgram.availability.minDuration.value;
                     if (durationMin != null && currentProgramCount < durationMin) {
                         $this.find(".message.duration-min").show();
@@ -650,17 +633,30 @@
 
                 /*** CHECK 3: AVAILABLE/BOOKABLE FROM/TO ***/
 
+                // Note: We don't check if a program is disabled, just if its not available/bookable anymore. This gives us more precise insight.
                 var availableFrom = new Date(currentProgram.availability.availableFrom);
                 var availableUntil = currentProgram.availability.availableUntil ? new Date(currentProgram.availability.availableUntil.value) : null;
+                var bookableUntil = currentProgram.availability.bookableUntil ? new Date(currentProgram.availability.bookableUntil.value) : null;
 
                 if (currentWeekDate < availableFrom) {
                     $this.find(".message.available-from .date").text(availableFrom.toLocaleDateString());
                     $this.find(".message.available-from").show();
                 }
 
-                if (availableUntil != null && currentWeekDate > availableUntil) {
-                    $this.find(".message.available-until .date").text(availableUntil.toLocaleDateString());
-                    $this.find(".message.available-until").show();
+                // // Was this program booked before?
+                var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(p => p.id == currentProgram.id).length;
+                if(programCount[currentProgram.id] <= countOriginal) {
+
+                    // Not booked before or for less weeks. So we need to check if the program is still available and bookable.
+                    // That way we allow for previously booked programs to stay part of a booking
+                    if (availableUntil != null && currentWeekDate > availableUntil) {
+                        $this.find(".message.available-until .date").text(availableUntil.toLocaleDateString());
+                        $this.find(".message.available-until").show();
+                    }
+
+                    if (bookableUntil != null && currentWeekDate > bookableUntil) {
+                        // This should have been taken care of by the UI already
+                    }
                 }
 
 

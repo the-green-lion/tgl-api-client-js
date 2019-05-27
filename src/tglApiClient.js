@@ -2,7 +2,7 @@
  * Javascript client for TGL's REST API.
  *
  * @author  Bernhard Gessler
- * @version 1.0.0
+ * @version 1.2.1
  */
 var tglApiClient = new function() {
     // Variables
@@ -324,67 +324,41 @@ var tglApiClient = new function() {
         //var urlBookingsOrganization = "https://api.thegreenlion.net/booking/organization";
 
         // Get all bookings matching certain criteria
-        this.listBookingsOfUser = function(userId, filter, page, callbackSuccess, callbackFailed) {
-            listBookings("user", userId, filter, page, callbackSuccess, callbackFailed);
-        }
-
-        this.listBookingsOfOrganization = function(organizationId, filter, page, callbackSuccess, callbackFailed) {
-            listBookings("organization", organizationId, filter, page, callbackSuccess, callbackFailed);
-        }
-
-        function listBookings(entity, entityId, filter, page, callbackSuccess, callbackFailed) {
+        this.listBookings = function(filter, page, callbackSuccess, callbackFailed) {
           var parameters = "&page=" + page;
           if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
           if (filter.hasOwnProperty('dateStartBefore')) parameters += "&dateStartBefore=" + filter.dateStartBefore;
           if (filter.hasOwnProperty('dateStartafter')) parameters += "&dateStartafter=" + filter.dateStartafter;
+          if (filter.hasOwnProperty('dateEndBefore')) parameters += "&dateEndBefore=" + filter.dateEndBefore;
+          if (filter.hasOwnProperty('dateEndAfter')) parameters += "&dateEndAfter=" + filter.dateEndAfter;
           if (filter.hasOwnProperty('reference')) parameters += "&reference=" + filter.reference;
+          if (filter.hasOwnProperty('dateUpdatedAfter')) parameters += "&dateUpdatedAfter=" + filter.dateUpdatedAfter;
+          if (filter.hasOwnProperty('nameContains')) parameters += "&nameContains=" + filter.nameContains;
           if (filter.hasOwnProperty('email')) parameters += "&email=" + filter.email;
+          if (filter.hasOwnProperty('organizationId')) parameters += "&organizationId=" + filter.organizationId;
+          if (filter.hasOwnProperty('userId')) parameters += "&userId=" + filter.userId;
 
-          executeCall("GET", entity, entityId, '', parameters, null, callbackSuccess, callbackFailed);
+          executeCall("GET", parameters, null, callbackSuccess, callbackFailed);
         }
 
         // Get booking with specified id
-        this.getBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
-          executeCall("GET", "user", userId, id, '', null, callbackSuccess, callbackFailed);
-        }
-
-        this.getBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
-            executeCall("GET", "organization", organizationId, id, '', null, callbackSuccess, callbackFailed);
-        }
-
-        this.getBookingGlobal = function(id, callbackSuccess, callbackFailed) {
-            executeCall("GET", "all", '',  id, '', null, callbackSuccess, callbackFailed);
+       this.getBooking = function(id, callbackSuccess, callbackFailed) {
+            executeCall("GET", id, '', null, callbackSuccess, callbackFailed);
         }
         
         // Create new booking
-        this.createBookingOfUser = function(userId, booking, callbackSuccess, callbackFailed) {
-          executeCall("POST", "user", userId, '', '', booking, callbackSuccess, callbackFailed);
+        this.createBooking = function(booking, impersonateUserId = "me", callbackSuccess, callbackFailed) {
+          executeCall("POST", '', '&impersonateUserId=' + impersonateUserId, booking, callbackSuccess, callbackFailed);
         }
-        
+
         // Update booking with specified id
-        this.updateBookingOfUser = function(userId, id, booking, callbackSuccess, callbackFailed) {
-          executeCall("PUT", "user", userId, id, '', booking, callbackSuccess, callbackFailed);
-        }
-        
-        this.updateBookingOfOrganization = function(organizationId, id, booking, callbackSuccess, callbackFailed) {
-            executeCall("PUT", "organization", organizationId, id, '', booking, callbackSuccess, callbackFailed);
-        }
-
-        this.updateBookingGlobal = function(id, booking, callbackSuccess, callbackFailed) {
-            executeCall("PUT", "all", '',  id, '', booking, callbackSuccess, callbackFailed);
-        }
-        
+        this.updateBooking = function(id, booking, callbackSuccess, callbackFailed) {
+          executeCall("PUT", id, '', booking, callbackSuccess, callbackFailed);
+        }        
+               
         // Cancel booking with specified id
-        this.cancelBookingOfUser = function(userId, id, callbackSuccess, callbackFailed) {
-          executeCall("DELETE", "user", userId, id, '', null, callbackSuccess, callbackFailed);          
-        }
-
-        this.cancelBookingOfOrganization = function(organizationId, id, callbackSuccess, callbackFailed) {
-            executeCall("DELETE", "organization", organizationId, id, '', null, callbackSuccess, callbackFailed);          
-        }
-
-        this.cancelBookingGlobal = function(id, callbackSuccess, callbackFailed) {
-            executeCall("DELETE", "all", '',  id, '', null, callbackSuccess, callbackFailed);          
+        this.cancelBooking = function(id, callbackSuccess, callbackFailed) {
+            executeCall("DELETE", id, '', null, callbackSuccess, callbackFailed);          
         }
         
         /* ==================================
@@ -392,12 +366,12 @@ var tglApiClient = new function() {
            ================================== */
 
         // Call the TGL bookings server 
-        function executeCall(command, entity, entityId, id, parameters, booking, callbackSuccess, callbackFailed) {
+        function executeCall(command, id, parameters, booking, callbackSuccess, callbackFailed) {
           var token = currentUser.getIdToken(false).then(function(idToken) {
 
             jQuery.ajax({
               type: command,
-              url: tglApiClient.endpointBaseUrl + "booking/" + entity + (entityId != '' ? "/" + entityId : '') + "/bookings" + (id != '' ? "/" + id : '') + "?auth=" + idToken + parameters,
+              url: tglApiClient.endpointBaseUrl + "booking/bookings" + (id != '' ? "/" + id : '') + "?auth=" + idToken + parameters,
               data: JSON.stringify(booking),
               contentType: "application/json; charset=utf-8",
               dataType: "json",

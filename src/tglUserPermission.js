@@ -2,26 +2,49 @@
  * Loads and evaluates permissions of the current user
  *
  * @author  Bernhard Gessler
- * @version 1.1.0
+ * @version 1.1.6
  */
 (function( $ ) {
 
-    window.PermissionEntityEnum = {"None": 0, "Own":1, "Organization":2, "All":3};
-    Object.freeze(PermissionEntityEnum);
-    window.PermissionKindEnum = {"Default":1, "Ongoing":2, "Full":3};
-    Object.freeze(PermissionKindEnum);    
+    window.PermissionLevelEnum = {"None": 0, "Own":1, "Organization":2, "All":3};
+    Object.freeze(PermissionLevelEnum);
 
     window.tglUserPermission = new function() {
 
         this.CurrentUserId;
         this.CurrentUserOrganizationId;
 
-        this.PermissionCreateEntity;
-        this.PermissionReadEntity;
-        this.PermissionUpdateEntity;
-        this.PermissionUpdateKind;
-        this.PermissionDeleteEntity;
-        this.PermissionDeleteKind;
+        this.create = new function() {
+            this.Level = PermissionLevelEnum.None;
+            this.Full = false;
+            this.Before = false;
+            this.During = false;
+            this.After = false;
+        };
+
+        this.read = new function() {
+            this.Level = PermissionLevelEnum.None;
+            this.Full = false;
+            this.Before = false;
+            this.During = false;
+            this.After = false;
+        };
+
+        this.update = new function() {
+            this.Level = PermissionLevelEnum.None;
+            this.Full = false;
+            this.Before = false;
+            this.During = false;
+            this.After = false;
+        };
+
+        this.delete = new function() {
+            this.Level = PermissionLevelEnum.None;
+            this.Full = false;
+            this.Before = false;
+            this.During = false;
+            this.After = false;
+        };
 
         this.Load = function(callbackSuccess, callbackFailed) {
 
@@ -81,102 +104,66 @@
 
             // Parse Permissions
             var permissions = user.scopes;
+            var currentScopes = Object.keys(permissions).filter((key) => permissions[key]);
 
-            // Check if the user can create bookings
-            if(permissions.hasOwnProperty("booking_all_create")) {                    
-                tglUserPermission.PermissionCreateEntity = PermissionEntityEnum.All;
+            parseBookingPermissions(currentScopes, "create");
+            parseBookingPermissions(currentScopes, "read");
+            parseBookingPermissions(currentScopes, "update");
+            parseBookingPermissions(currentScopes, "delete");
+        }
 
-            } else if(permissions.hasOwnProperty("booking_organization_create")) {                    
-                tglUserPermission.PermissionCreateEntity = PermissionEntityEnum.Organization;
+        function parseBookingPermissions(currentScopes, action)
+        {
+            // Step 1: Check which booking the user is allowed to access
+            if (currentScopes.some(s => s.startsWith("booking_all_" + action + "_"))) {
+                // Global access
+                tglUserPermission[action].Level = PermissionLevelEnum.All;
 
-            } else if(permissions.hasOwnProperty("booking_own_create")) {
-                tglUserPermission.PermissionCreateEntity = PermissionEntityEnum.Own;
+            } else if (currentScopes.some(s => s.startsWith("booking_custom_" + action + "_"))) {
+                // Global access with a custom restriction.            
+                tglUserPermission[action].Level = PermissionLevelEnum.All;
 
-            } else {
-                tglUserPermission.PermissionCreateEntity = PermissionEntityEnum.None;
+            } else if (currentScopes.some(s => s.startsWith("booking_organization_" + action + "_"))) {
+                tglUserPermission[action].Level = PermissionLevelEnum.Organization;
+
+            } else if (currentScopes.some(s => s.startsWith("booking_own_" + action + "_"))) {
+                tglUserPermission[action].Level = PermissionLevelEnum.Own;
+            }
+            //else if (bookingId.ToString() == currentSession.CurrentUserId)
+            //{
+            //    // Participant updates his/her own booking
+            //    filterUserId = null;
+            //    filterOrganizationId = null;
+            //}
+            else {
+                tglUserPermission[action].Level = PermissionLevelEnum.None;
+                return;
             }
 
 
-            // Check if the user can read bookings
-            if(permissions.hasOwnProperty("booking_all_read")) {                    
-                tglUserPermission.PermissionReadEntity = PermissionEntityEnum.All;
-
-            } else if(permissions.hasOwnProperty("booking_organization_read")) {                    
-                tglUserPermission.PermissionReadEntity = PermissionEntityEnum.Organization;
-
-            } else if(permissions.hasOwnProperty("booking_own_read")) {
-                tglUserPermission.PermissionReadEntity = PermissionEntityEnum.Own;
-
-            } else {
-                tglUserPermission.PermissionReadEntity = PermissionEntityEnum.None;
+            // Step 2: Check when the user is allowed to access these bookings
+            if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_full")))
+            {
+                // Unrestricted access. We don't need to worry about cancellation limits.
+                tglUserPermission[action].Full = true;
+                tglUserPermission[action].Before = true;
+                tglUserPermission[action].During = true;
+                tglUserPermission[action].After = true;
             }
-
-
-            // Check if the user can update bookings
-            if(permissions.hasOwnProperty("booking_all_updatefull")) {
-                // Full Admin
-                // Can change pax details, itinerary in the future or past
-                // Can change booking before, during and after the trip is over                
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionUpdateKind = PermissionKindEnum.Full;
-
-            } else if(permissions.hasOwnProperty("booking_all_updateongoing")) {
-                // Country manager 
-                // Can change pax details
-                // Can update future weeks of booking during the trip
-                // Can not modify the past or the credit                 
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionUpdateKind = PermissionKindEnum.Ongoing;
-
-            } else if(permissions.hasOwnProperty("booking_all_update")) {
-                // Not sure yet if this is a use case
-                // Potentially marketing
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionUpdateKind = PermissionKindEnum.Default;
-
-            } else if(permissions.hasOwnProperty("booking_organization_update")) {
-                // Agent user with access to bookings made by his organization
-                // Can update itinerary until organization wide cancellation deadline
-                // Can update pax details until program start
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.Organization;
-                tglUserPermission.PermissionUpdateKind = PermissionKindEnum.Default;
-
-            } else if(permissions.hasOwnProperty("booking_own_update")) {
-                // Agent user with access to bookings made by himself
-                // Can update itinerary until organization wide cancellation deadline
-                // Can update pax details until program start
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.Own;
-                tglUserPermission.PermissionUpdateKind = PermissionKindEnum.Default;
-
-            } else {
-                // No relevant permission found
-                tglUserPermission.PermissionUpdateEntity = PermissionEntityEnum.None;
-            }
-
-
-            // Check if the user can delete bookings
-            if(permissions.hasOwnProperty("booking_all_deletefull")) {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionDeleteKind = PermissionKindEnum.Full;
-
-            } else if(permissions.hasOwnProperty("booking_all_deleteongoing")) {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionDeleteKind = PermissionKindEnum.Ongoing;
-
-            } else if(permissions.hasOwnProperty("booking_all_delete")) {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.All;
-                tglUserPermission.PermissionDeleteKind = PermissionKindEnum.Default;
-
-            } else if(permissions.hasOwnProperty("booking_organization_delete")) {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.Organization;
-                tglUserPermission.PermissionDeleteKind = PermissionKindEnum.Default;
-
-            } else if(permissions.hasOwnProperty("booking_own_delete")) {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.Own;
-                tglUserPermission.PermissionDeleteKind = PermissionKindEnum.Default;
-
-            } else {
-                tglUserPermission.PermissionDeleteEntity = PermissionEntityEnum.None;
+            else
+            {
+                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_before")))
+                {
+                    tglUserPermission[action].Before = true;
+                }
+                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_during")))
+                {
+                    tglUserPermission[action].During = true;
+                }
+                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_after")))
+                {
+                    tglUserPermission[action].After = true;
+                }
             }
         }
     }

@@ -11,7 +11,7 @@ This library depends on [firebase 3](https://firebase.google.com/docs/web/setup)
 - https://www.gstatic.com/firebasejs/3.6.1/firebase-auth.js
 - https://www.gstatic.com/firebasejs/3.6.1/firebase-database.js
 
-Also, jQuery is required. This library was built against verion 3.1.0
+Also, jQuery is required. This library was built against verion 3.2.1
 
 ## Basic Usage
 
