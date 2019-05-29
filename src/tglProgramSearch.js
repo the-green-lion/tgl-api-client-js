@@ -2,7 +2,7 @@
  * Provides fast client side search using the tglContentBuffer
  *
  * @author  Bernhard Gessler
- * @version 1.1.4
+ * @version 1.1.6
  */
 (function( $ ) {
     var isoCountries = {
@@ -379,7 +379,7 @@
     
             // If we're not typing anything into search yet, show all programs
             if(resultItems == null && instance.Options.ShowAllIfEmpty){
-                resultItems = Object.values(tglContentBuffer.Buffer).filter(x => x.documentType == "Program").sort((a,b) => a.documentName.localeCompare(b.title));
+                resultItems = Object.values(tglContentBuffer.Buffer).filter(x => x.documentType == "Program").sort((a,b) => a.documentName.localeCompare(b.documentName));
             }
 
             // Apply any additional filtering
@@ -415,7 +415,7 @@
     
                     var $html = $(templateProgram(context));
     
-                    if (resultItems[i].state == "Disabled") {
+                    if (resultItems[i].documentState == "Disabled") {
                         $html.find(".message.is-disabled").show();
                     }
     
