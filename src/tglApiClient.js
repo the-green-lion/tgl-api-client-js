@@ -338,7 +338,7 @@ var tglApiClient = new function() {
           if (filter.hasOwnProperty('organizationId')) parameters += "&organizationId=" + filter.organizationId;
           if (filter.hasOwnProperty('userId')) parameters += "&userId=" + filter.userId;
 
-          executeCall("GET", parameters, null, callbackSuccess, callbackFailed);
+          executeCall("GET", "", parameters, null, callbackSuccess, callbackFailed);
         }
 
         // Get booking with specified id
