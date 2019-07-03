@@ -328,7 +328,7 @@ var tglApiClient = new function() {
           var parameters = "&page=" + page;
           if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
           if (filter.hasOwnProperty('dateStartBefore')) parameters += "&dateStartBefore=" + filter.dateStartBefore;
-          if (filter.hasOwnProperty('dateStartafter')) parameters += "&dateStartafter=" + filter.dateStartafter;
+          if (filter.hasOwnProperty('dateStartAfter')) parameters += "&dateStartAfter=" + filter.dateStartAfter;
           if (filter.hasOwnProperty('dateEndBefore')) parameters += "&dateEndBefore=" + filter.dateEndBefore;
           if (filter.hasOwnProperty('dateEndAfter')) parameters += "&dateEndAfter=" + filter.dateEndAfter;
           if (filter.hasOwnProperty('reference')) parameters += "&reference=" + filter.reference;
