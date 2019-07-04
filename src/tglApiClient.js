@@ -326,7 +326,7 @@ var tglApiClient = new function() {
         // Get all bookings matching certain criteria
         this.listBookings = function(filter, page, callbackSuccess, callbackFailed) {
           var parameters = "&page=" + page;
-          if (filter.hasOwnProperty('isCanceled')) parameters += "&iscanceled=" + filter.isCanceled;
+          if (filter.hasOwnProperty('isCanceled')) parameters += "&isCanceled=" + filter.isCanceled;
           if (filter.hasOwnProperty('dateStartBefore')) parameters += "&dateStartBefore=" + filter.dateStartBefore;
           if (filter.hasOwnProperty('dateStartAfter')) parameters += "&dateStartAfter=" + filter.dateStartAfter;
           if (filter.hasOwnProperty('dateEndBefore')) parameters += "&dateEndBefore=" + filter.dateEndBefore;
