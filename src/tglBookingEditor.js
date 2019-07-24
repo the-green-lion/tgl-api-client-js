@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.1.3
+ * @version 1.1.4
  */
 (function( $ ) {
 
@@ -53,6 +53,8 @@
             this.AllowAddCredit = false;
 
             this.StartDayOfWeek = 1;
+
+            this.MaintainCredit = true;
 
             this.FieldContainer;
             this.ItineraryContainer;
@@ -125,10 +127,10 @@
                 // Later on we can use that to compare the draft with the latest saved version
                 tglBookingEditor.BookingUnmodified = clone(booking);
                 
-                // Adjust the booking start date to the local start date setting
+                 // Adjust the booking start date to the local start date setting
                 // This could vary country by country
                 localDateStart = new Date(tglBookingEditor.Booking.dateStart).addDays(tglBookingEditor.Options.StartDayOfWeek - 1);
-                localDateStart.setHours(0,0,0,0);
+                localDateStart.setMinutes(localDateStart.getMinutes() + localDateStart.getTimezoneOffset());
 
                 // Check if the booking is cancelled. In this case it can't be edited anymore.
                 if(booking.isCanceled){
@@ -339,6 +341,10 @@
             updatePrices();
         }
 
+        this.RefreshCredit = function(){
+            updatePrices();
+        }
+
         function updatePrices() {
             //TODO: Update price
             // We might have a program booked a long time ago before a price change
@@ -363,11 +369,18 @@
             }
 
             // Adjust unused points
-            // If we use more points than we havce, we set unused points to 0
+            // If we use more points than we have, we set unused points to 0
             var totalAmount = tglBookingEditor.GetTotalAmount();
             var totalCredit = tglBookingEditor.GetTotalCredit();
             var unusedCredit = Math.max(totalCredit - totalAmount, 0);
             var indexUnusedCredit = tglBookingEditor.Booking.fees.findIndex(x => x.sku == "unused-points");
+
+            // If we decided not to keep unused points as available credit, remove them
+            if(!tglBookingEditor.Options.MaintainCredit){
+                unusedCredit = 0;
+            }
+
+            // Update booking
             if(unusedCredit == 0 && indexUnusedCredit >= 0) {
 
                 // We used to have unused points in here but don't need them anymore
@@ -397,6 +410,12 @@
         }
 
         this.GetTotalCredit = function(){
+
+            if(!tglBookingEditor.Options.MaintainCredit){
+                // If we decided not to keep unused points as available credit, don't count them
+                return tglBookingEditor.GetTotalAmount();
+            }
+
             var totalProgramsCredit = tglBookingEditor.BookingUnmodified.programs.reduce((a,b) => a + b.price, 0);
             var totalFeesCredit = tglBookingEditor.BookingUnmodified.fees.reduce((a,b) => a + (b.price * b.quantity), 0);
             
@@ -643,7 +662,7 @@
                     $this.find(".message.available-from").show();
                 }
 
-                // // Was this program booked before?
+                // Was this program booked before?
                 var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(p => p.id == currentProgram.id).length;
                 if(programCount[currentProgram.id] <= countOriginal) {
 
