@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.1.4
+ * @version 1.1.6
  */
 (function( $ ) {
 
@@ -164,6 +164,7 @@
                 if(!isEditable && tglBookingEditor.Options.FieldContainer){
                     tglBookingEditor.Options.FieldContainer.find("input").prop( "disabled", true );
                     tglBookingEditor.Options.FieldContainer.find("select").prop( "disabled", true );
+                    tglBookingEditor.Options.FieldContainer.find("textarea").prop( "disabled", true );
                 }
 
                 // If we are only allowed to edit the booking before arrival, we need to consider the organization specific cancellation deadline
