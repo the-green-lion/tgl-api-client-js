@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.1.6
+ * @version 1.2.0
  */
 (function( $ ) {
 
@@ -342,6 +342,84 @@
             updatePrices();
         }
 
+        this.AdjustFeeOnsitePayment = function(adjustmentAmount){
+            adjustFee("onsite-payment", adjustmentAmount);
+        }
+
+        this.AdjustFeeDiscount = function(adjustmentAmount){
+            adjustFee("Discount", adjustmentAmount);
+        }
+
+        this.AdjustFeeRefund = function(adjustmentAmount){
+            adjustFee("Refund", adjustmentAmount);
+        }
+
+        function adjustFee(feeName, adjustmentAmount){
+
+            // Check invoice amount after discunt and refund
+            var totalAmount = tglBookingEditor.GetTotalAmount();
+            var totalCredit = tglBookingEditor.GetTotalCredit();
+            var amountOnSite = -tglBookingEditor.GetFeeAmount("onsite-payment");
+            var amountDiscount = -tglBookingEditor.GetFeeAmount("Discount");
+            var amountRefund = -tglBookingEditor.GetFeeAmount("Refund");
+            var amountInvoice = Math.max(totalCredit, totalAmount) - amountOnSite - amountDiscount - amountRefund;
+            
+            if(tglBookingEditor.GetInvoiceAmount() <= 0 && adjustmentAmount > 0 && feeName != "onsite-payment"){
+                // Invoice amount can't get negative
+                return;
+            }
+    
+            // Find current on-site payment amount
+            var indexFee = tglBookingEditor.Booking.fees.findIndex(x => x.sku == feeName);
+            var currentQuantity = 0;
+            if(indexFee >= 0){
+                currentQuantity = tglBookingEditor.Booking.fees[indexFee].quantity;
+            }
+    
+            var newQuantity = currentQuantity + adjustmentAmount;
+            if(newQuantity < 0) newQuantity = 0;
+    
+            // Update booking
+            if(newQuantity == 0 && indexFee >= 0) {
+    
+                // We used to have unused points in here but don't need them anymore
+                tglBookingEditor.Booking.fees.splice(indexFee, 1);
+    
+            } else if(newQuantity > 0 && indexFee >= 0){
+    
+                // We used to have unused points in here. Just update the quantity.
+                tglBookingEditor.Booking.fees[indexFee].quantity = newQuantity;
+    
+            } else if(newQuantity > 0 && indexFee == -1){
+    
+                // We didn't have unused points before but need them now. Add them.
+                tglBookingEditor.Booking.fees.push({sku: feeName, quantity: newQuantity, price: -1});
+            }
+    
+            updatePrices();
+        }
+
+        this.GetFeeAmount = function(feeName){
+            var indexFee = tglBookingEditor.Booking.fees.findIndex(x => x.sku == feeName);
+            var feeAmount = 0;
+            if(indexFee >= 0){
+                feeAmount = tglBookingEditor.Booking.fees[indexFee].quantity * tglBookingEditor.Booking.fees[indexFee].price;
+            }
+    
+            return feeAmount;
+        }
+
+        this.GetInvoiceAmount = function(){
+            
+            // Calculate invoice amount after cash pasyments, discount and refund
+            var totalAmount = tglBookingEditor.GetTotalAmount();
+            var totalCredit = tglBookingEditor.GetTotalCredit();
+            var amountOnSite = -tglBookingEditor.GetFeeAmount("onsite-payment");
+            var amountDiscount = -tglBookingEditor.GetFeeAmount("Discount");
+            var amountRefund = -tglBookingEditor.GetFeeAmount("Refund");
+            return Math.max(totalCredit, totalAmount) - amountOnSite - amountDiscount - amountRefund;
+        }
+
         this.RefreshCredit = function(){
             updatePrices();
         }
@@ -404,8 +482,9 @@
         }
 
         this.GetTotalAmount = function(){
+            var excludedFees = ["unused-points", "onsite-payment", "Discount", "Refund"];
             var totalPrograms = tglBookingEditor.Booking.programs.reduce((a,b) => a + b.price, 0);
-            var totalFees = tglBookingEditor.Booking.fees.filter(x => x.sku != "unused-points").reduce((a,b) => a + (b.price * b.quantity), 0);
+            var totalFees = tglBookingEditor.Booking.fees.filter(f => !excludedFees.includes(f.sku)).reduce((a,b) => a + (b.price * b.quantity), 0);
 
             return totalPrograms + totalFees;
         }
@@ -417,10 +496,14 @@
                 return tglBookingEditor.GetTotalAmount();
             }
 
+            var excludedFees = ["onsite-payment", "Discount", "Refund"];
             var totalProgramsCredit = tglBookingEditor.BookingUnmodified.programs.reduce((a,b) => a + b.price, 0);
-            var totalFeesCredit = tglBookingEditor.BookingUnmodified.fees.reduce((a,b) => a + (b.price * b.quantity), 0);
-            
-            return totalProgramsCredit + totalFeesCredit;
+            var totalFeesCredit = tglBookingEditor.BookingUnmodified.fees.filter(f => !excludedFees.includes(f.sku)).reduce((a,b) => a + (b.price * b.quantity), 0);
+
+            var totalOnsitePayment = tglBookingEditor.BookingUnmodified.fees.filter(f => f.sku == "onsite-payment").reduce((a,b) => a + (b.price * b.quantity), 0);
+            var totalOnsitePaymentCurrent = tglBookingEditor.Booking.fees.filter(f => f.sku == "onsite-payment").reduce((a,b) => a + (b.price * b.quantity), 0);
+
+            return totalProgramsCredit + totalFeesCredit + totalOnsitePayment - totalOnsitePaymentCurrent;
         }
 
         this.GetQuote = function(newProgramId, count = null) {
