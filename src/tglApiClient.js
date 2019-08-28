@@ -341,6 +341,12 @@ var tglApiClient = new function() {
           executeCall("GET", "", parameters, null, callbackSuccess, callbackFailed);
         }
 
+        // Get all bookings matching certain criteria
+        this.listBookingHistory = function(bookingId, maxId, callbackSuccess, callbackFailed) {
+            var parameters = "&maxId=" + maxId;
+            executeCall("GET", bookingId + "/history", parameters, null, callbackSuccess, callbackFailed);
+        }
+
         // Get booking with specified id
        this.getBooking = function(id, callbackSuccess, callbackFailed) {
             executeCall("GET", id, '', null, callbackSuccess, callbackFailed);
