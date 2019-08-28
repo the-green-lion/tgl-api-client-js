@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.2.0
+ * @version 1.3.0
  */
 (function( $ ) {
 
@@ -27,11 +27,13 @@
         var isItineraryEditable = true;
         var isCancelable = true;
         var localDateStart = null;
+        var timerRefreshHistory = null;
         
         // --------------
         // PRECOMPILED HANDLEBARS TEMPLATES
         // --------------
         var templateProgram;
+        var templateHistory;
 
         // --------------
         // OPTIONS
@@ -60,8 +62,10 @@
             this.ItineraryContainer;
             this.ItineraryContainerNonEditable;
             this.ItineraryContainerEditable;
+            this.HistoryContainer = null;
             this.WelcomeNote;
             this.TemplateProgram;
+            this.TemplateHistory = null;
 
             this.CallbackProgramChange;
             this.CallbackItineraryUpdated;
@@ -71,6 +75,11 @@
         this.Init = function() {
             var sourceProgram = this.Options.TemplateProgram.html();
             templateProgram = Handlebars.compile(sourceProgram);
+
+            if(this.Options.TemplateHistory != null){
+                var sourceHistory = this.Options.TemplateHistory.html();
+                templateHistory = Handlebars.compile(sourceHistory);
+            }
         }
 
         this.CreateBooking = function(callbackSuccess, callbackFailed) {
@@ -875,6 +884,116 @@
 
             // Time srtarts counting from 1970. Deduct this from the date.
             return ageDate.getUTCFullYear() - 1970;
-        }        
+        }
+        
+        this.PopulateHistory = function() {
+
+            if(tglBookingEditor.Options.BookingId == null){
+                // We're creating a booking. No history yet.
+                return;
+            }
+    
+            if(tglBookingEditor.Options.HistoryContainer == null || tglBookingEditor.Options.TemplateHistory == null){
+                // Seems like we're not actually displaying the history
+                return;
+            }
+
+            // Show history now
+            displayHistory()
+
+            if(timerRefreshHistory == null){
+                // No timer set yet. Do so now so the history refreshes every minute.
+                timerRefreshHistory = setInterval(() =>{
+
+                    displayHistory();
+
+                }, 60000);
+            }
+
+            function displayHistory(){
+
+                tglBookingEditor.Options.HistoryContainer.empty();    
+                tglApiClient.booking.listBookingHistory(tglBookingEditor.Options.BookingId, 99999999, function(historyRecords){
+                    
+                    for (var i = 0; i < historyRecords.length; i++) {
+        
+                        var html = createHistoryItem(historyRecords[i]);                    
+                        tglBookingEditor.Options.HistoryContainer.append(html);
+                    }
+                });
+            }
+            
+        }
+
+        function createHistoryItem(record){
+            
+            var description = "";
+            if(record.type == "Create"){
+
+                description = 'created the booking';
+            
+            } else if(record.type == "Update" && record.valueBefore != null && record.valueAfter != null){
+
+                description = 'updated <u>' + record.field + '</u> from <i>' + record.valueBefore + '</i> to <i>' + record.valueAfter + '</i>';
+
+            } else if(record.type == "Update" && record.valueBefore != null && record.valueAfter == null){
+
+                description = 'emptied <u>' + record.field + '</u>';
+            
+            } else if(record.type == "Update" && record.valueBefore == null && record.valueAfter != null){
+
+                description = 'filled in <u>' + record.field + '</u> as <i>' + record.valueAfter + '</i>';
+            
+            } else if(record.type == "Delete"){
+
+                description = 'cancelled the booking';
+
+            } else if(record.type == "Add"){
+                
+                description = 'TBD';
+
+            } else if(record.type == "Remove"){
+                
+                description = 'TBD';
+            }        
+
+            var yesterday = new Date();;
+            var yesterday = yesterday.setDate(yesterday.getDate() - 1);
+
+            var timestamp = new Date(record.timestamp);
+            var timeDifference = new Date(new Date() - timestamp);
+            var timeDifferenceMinutes = Math.round((new Date() - timestamp) / 1000 / 60);
+            var timestampString = "";
+            if(timeDifferenceMinutes < 2){
+                timestampString = "Just now"
+
+            } else if(timeDifferenceMinutes < 50){
+                timestampString = timeDifferenceMinutes.toString() + " minutes ago";
+
+            } else if(timeDifferenceMinutes < 100){
+                timestampString = "One hour ago";
+                
+            } else if(timeDifferenceMinutes < 360 || timestamp.getDate() == new Date().getDate()){
+                var timeDifferenceHours = Math.floor((timeDifferenceMinutes + 20) / 60);
+                timestampString = timeDifferenceHours + " hours ago";
+
+            } else if (timestamp.getDate() == timestamp.getDate() && timestamp.getMonth() == yesterday.getMonth() && timestamp.getFullYear() == yesterday.getFullYear()) {
+                timestampString = "Yesterday, " + timestamp.getHours().toString().padStart(2, "0") + ":" + timestamp.getMinutes().toString().padStart(2, "0");
+
+            } else {
+                timestampString = timestamp.getFullYear() + "-"
+                    + (timestamp.getMonth() + 1).toString().padStart(2, "0") + "-"
+                    + (timestamp.getDate() + 1).toString().padStart(2, "0") + " "
+                    + timestamp.getHours().toString().padStart(2, "0") + ":"
+                    + timestamp.getMinutes().toString().padStart(2, "0");
+            }
+
+            var context = {
+                name: record.userName,
+                description: description,
+                timestamp: timestampString                    
+            };
+            return $(templateHistory(context));
+        }
     }
 }( jQuery ));
