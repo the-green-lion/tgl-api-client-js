@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.3.0
+ * @version 1.3.1
  */
 (function( $ ) {
 
@@ -73,7 +73,7 @@
         }
         
         this.Init = function() {
-            var sourceProgram = this.Options.TemplateProgram.html();
+            var sourceProgram = this.Options.TemplateProgram.html();            
             templateProgram = Handlebars.compile(sourceProgram);
 
             if(this.Options.TemplateHistory != null){
@@ -136,7 +136,7 @@
                 // Later on we can use that to compare the draft with the latest saved version
                 tglBookingEditor.BookingUnmodified = clone(booking);
                 
-                 // Adjust the booking start date to the local start date setting
+                // Adjust the booking start date to the local start date setting
                 // This could vary country by country
                 localDateStart = new Date(tglBookingEditor.Booking.dateStart).addDays(tglBookingEditor.Options.StartDayOfWeek - 1);
                 localDateStart.setMinutes(localDateStart.getMinutes() + localDateStart.getTimezoneOffset());
@@ -262,7 +262,13 @@
             if(tglBookingEditor.Options.BookingId != null) {
 
                 // Edit an existing booking
-                tglApiClient.booking.updateBooking(tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, callbackSuccess, callbackFailed);                
+                tglApiClient.booking.updateBooking(tglBookingEditor.Booking.bookingId, tglBookingEditor.Booking, function(){
+
+                    tglBookingEditor.BookingUnmodified = clone(tglBookingEditor.Booking);
+
+                    if(callbackSuccess) callbackSuccess();
+
+                }, callbackFailed);                
 
             } else {
 
@@ -911,10 +917,10 @@
             }
 
             function displayHistory(){
-
-                tglBookingEditor.Options.HistoryContainer.empty();    
+                
                 tglApiClient.booking.listBookingHistory(tglBookingEditor.Options.BookingId, 99999999, function(historyRecords){
                     
+                    tglBookingEditor.Options.HistoryContainer.empty();
                     for (var i = 0; i < historyRecords.length; i++) {
         
                         var html = createHistoryItem(historyRecords[i]);                    
@@ -950,15 +956,14 @@
 
             } else if(record.type == "Add"){
                 
-                description = 'TBD';
+                description = 'added <u>' + record.field + '</u>, <i>' + record.valueAfter + '</i>';
 
             } else if(record.type == "Remove"){
                 
-                description = 'TBD';
+                description = 'removed <u>' + record.field + '</u>, <i>' + record.valueBefore + '</i>';
             }        
 
-            var yesterday = new Date();;
-            var yesterday = yesterday.setDate(yesterday.getDate() - 1);
+            var yesterday = new Date(new Date() - 1000*60*60*24);
 
             var timestamp = new Date(record.timestamp);
             var timeDifference = new Date(new Date() - timestamp);
