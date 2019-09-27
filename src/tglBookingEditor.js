@@ -2,7 +2,7 @@
  * Allows to load, display, modify and save bookings
  *
  * @author  Bernhard Gessler
- * @version 1.3.1
+ * @version 1.3.2
  */
 (function( $ ) {
 
@@ -982,7 +982,7 @@
                 var timeDifferenceHours = Math.floor((timeDifferenceMinutes + 20) / 60);
                 timestampString = timeDifferenceHours + " hours ago";
 
-            } else if (timestamp.getDate() == timestamp.getDate() && timestamp.getMonth() == yesterday.getMonth() && timestamp.getFullYear() == yesterday.getFullYear()) {
+            } else if (timestamp.getDate() == yesterday.getDate() && timestamp.getMonth() == yesterday.getMonth() && timestamp.getFullYear() == yesterday.getFullYear()) {
                 timestampString = "Yesterday, " + timestamp.getHours().toString().padStart(2, "0") + ":" + timestamp.getMinutes().toString().padStart(2, "0");
 
             } else {
