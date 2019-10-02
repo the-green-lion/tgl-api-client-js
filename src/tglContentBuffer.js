@@ -28,7 +28,7 @@
         }
 
         function getLatestPublishedDate(){
-            return new Date(Math.max.apply(null, Object.values(tglContentBuffer.Buffer).map(p => new Date(p.documentLastPublished))));
+            return new Date(Math.max.apply(null, Object.values(tglContentBuffer.Buffer).map(function(p) { return new Date(p.documentLastPublished) })));
         }
 
         function refreshBuffer(callbackSuccess, callbackFailed) {
@@ -104,8 +104,8 @@
 
                 // All document types loaded?
                 var loadedCounts = Object.values(loaded);
-                if(loadedCounts.every(t => t >= 0)){
-                    var isUpdated = loadedCounts.some(t => t > 0);
+                if(loadedCounts.every(function(t) { return t >= 0 })){
+                    var isUpdated = loadedCounts.some(function(t) { return t > 0 });
 
                     // If Search is enabled, we need to build or update the search index
                     // If either we had no search index yet or the index outdated (more than zero docs were loaded), we build a new one
@@ -175,7 +175,7 @@
         }
 
         this.GetProgramLocationString = function (program) {
-            var locationNames = program.locations.map(l => l.name);
+            var locationNames = program.locations.map(function(l) { return l.name });
             var locationString = locationNames[0];
             if(locationNames.length > 1) {
                 locationString = [locationNames.slice(0, -1).join(', '), locationNames[locationNames.length - 1]].join(" & ");
@@ -218,7 +218,7 @@
                     // Add the doc to our doc buffer
                     bufferInternal[documentId] = doc;
 
-                    pendingCallbacks.forEach(c => c(doc));
+                    pendingCallbacks.forEach(function(c) { return c(doc) });
 
                 }, function(error) {
                     if (callbackFailed) callbackFailed(error);
@@ -244,7 +244,7 @@
                     allDocuments[doc.documentId] = doc;
 
                     // Check if we're done loading everything we wanted to load
-                    if(documentIds.every(id => allDocuments.hasOwnProperty(id))){
+                    if(documentIds.every(function(id) { return allDocuments.hasOwnProperty(id) })){
                         if (callbackSuccess) callbackSuccess(allDocuments);
                     }
 
@@ -266,7 +266,7 @@
                 var localStorageOptions = JSON.parse(localStorage.tgl_content_options);
                 if(localStorageOptions.includeDisabled != tglContentBuffer.Options.IncludeDisabled || 
                     localStorageOptions.programTypes.length != tglContentBuffer.Options.ProgramTypes.length ||
-                    localStorageOptions.programTypes.some((value, index) => value !== tglContentBuffer.Options.ProgramTypes[index])) {
+                    localStorageOptions.programTypes.some(function(value, index) { return value !== tglContentBuffer.Options.ProgramTypes[index] })) {
 
                     refreshBuffer(function(){
                         if (tglContentBuffer.Options.CallbackBufferReady) tglContentBuffer.Options.CallbackBufferReady();

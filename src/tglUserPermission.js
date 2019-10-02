@@ -104,7 +104,7 @@
 
             // Parse Permissions
             var permissions = user.scopes;
-            var currentScopes = Object.keys(permissions).filter((key) => permissions[key]);
+            var currentScopes = Object.keys(permissions).filter(function(key) { return permissions[key] });
 
             parseBookingPermissions(currentScopes, "create");
             parseBookingPermissions(currentScopes, "read");
@@ -115,18 +115,18 @@
         function parseBookingPermissions(currentScopes, action)
         {
             // Step 1: Check which booking the user is allowed to access
-            if (currentScopes.some(s => s.startsWith("booking_all_" + action + "_"))) {
+            if (currentScopes.some(function(s) { return s.startsWith("booking_all_" + action + "_") })) {
                 // Global access
                 tglUserPermission[action].Level = PermissionLevelEnum.All;
 
-            } else if (currentScopes.some(s => s.startsWith("booking_custom_" + action + "_"))) {
+            } else if (currentScopes.some(function(s) { return s.startsWith("booking_custom_" + action + "_") })) {
                 // Global access with a custom restriction.            
                 tglUserPermission[action].Level = PermissionLevelEnum.All;
 
-            } else if (currentScopes.some(s => s.startsWith("booking_organization_" + action + "_"))) {
+            } else if (currentScopes.some(function(s) { return s.startsWith("booking_organization_" + action + "_") })) {
                 tglUserPermission[action].Level = PermissionLevelEnum.Organization;
 
-            } else if (currentScopes.some(s => s.startsWith("booking_own_" + action + "_"))) {
+            } else if (currentScopes.some(function(s) { return s.startsWith("booking_own_" + action + "_") })) {
                 tglUserPermission[action].Level = PermissionLevelEnum.Own;
             }
             //else if (bookingId.ToString() == currentSession.CurrentUserId)
@@ -142,7 +142,7 @@
 
 
             // Step 2: Check when the user is allowed to access these bookings
-            if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_full")))
+            if (currentScopes.some(function(s) { return s.startsWith("booking_") && s.endsWith("_" + action + "_full") }))
             {
                 // Unrestricted access. We don't need to worry about cancellation limits.
                 tglUserPermission[action].Full = true;
@@ -152,15 +152,15 @@
             }
             else
             {
-                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_before")))
+                if (currentScopes.some(function(s) { return s.startsWith("booking_") && s.endsWith("_" + action + "_before") }))
                 {
                     tglUserPermission[action].Before = true;
                 }
-                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_during")))
+                if (currentScopes.some(function(s) { return s.startsWith("booking_") && s.endsWith("_" + action + "_during") }))
                 {
                     tglUserPermission[action].During = true;
                 }
-                if (currentScopes.some(s => s.startsWith("booking_") && s.endsWith("_" + action + "_after")))
+                if (currentScopes.some(function(s) { return s.startsWith("booking_") && s.endsWith("_" + action + "_after") }))
                 {
                     tglUserPermission[action].After = true;
                 }

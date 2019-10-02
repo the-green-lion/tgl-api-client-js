@@ -353,7 +353,7 @@
                 });
 
                 results = tglContentBuffer.Index.search(searchTerms.join(" "));                                        
-                resultItems = results.map(x => tglContentBuffer.Buffer[x.ref]);
+                resultItems = results.map(function(x) { return tglContentBuffer.Buffer[x.ref] });
             }
                                 
             renderSearchResults(filterAndSort(resultItems));
@@ -367,19 +367,19 @@
         function filterAndSort(resultItems) {
     
             if(resultItems != null && !instance.Options.IncludeDisabled){
-                resultItems = resultItems.filter(x => x.documentState == "Enabled");
+                resultItems = resultItems.filter(function(x) { return x.documentState == "Enabled" });
             }
     
             if(resultItems != null && !instance.Options.IncludeNonBookable){
     
                 var today = new Date();
                 today.setHours(0,0,0,0);            
-                resultItems = resultItems.filter(x => x.availability.bookableUntil == null || x.availability.bookableUntil >= today);
+                resultItems = resultItems.filter(function(x) { return x.availability.bookableUntil == null || x.availability.bookableUntil >= today });
             }
     
             // If we're not typing anything into search yet, show all programs
             if(resultItems == null && instance.Options.ShowAllIfEmpty){
-                resultItems = Object.values(tglContentBuffer.Buffer).filter(x => x.documentType == "Program").sort((a,b) => a.documentName.localeCompare(b.documentName));
+                resultItems = Object.values(tglContentBuffer.Buffer).filter(function(x) { return x.documentType == "Program"}).sort(function(a,b) { return a.documentName.localeCompare(b.documentName) });
             }
 
             // Apply any additional filtering
@@ -408,7 +408,7 @@
                     var context = {
                         id: resultItems[i].documentId,
                         location: tglContentBuffer.GetProgramLocationString(resultItems[i]),
-                        imageUrl: resultItems[i].media.images[0].sizes.find(elem => elem.size === "480, 360").url,
+                        imageUrl: resultItems[i].media.images[0].sizes.find(function(elem) { return elem.size === "480, 360" }).url,
                         title: resultItems[i].documentName,
                         //price: 7,          
                     };

@@ -125,7 +125,7 @@
         this.LoadBooking = function(callbackSuccess, callbackFailed) {
 
 
-            tglApiClient.booking.getBooking(tglBookingEditor.Options.BookingId, booking => bookingLoaded(booking), callbackFailed);
+            tglApiClient.booking.getBooking(tglBookingEditor.Options.BookingId, bookingLoaded, callbackFailed);
 
             function bookingLoaded(booking) {
 
@@ -385,7 +385,7 @@
             }
     
             // Find current on-site payment amount
-            var indexFee = tglBookingEditor.Booking.fees.findIndex(x => x.sku == feeName);
+            var indexFee = tglBookingEditor.Booking.fees.findIndex(function(x) { return x.sku == feeName });
             var currentQuantity = 0;
             if(indexFee >= 0){
                 currentQuantity = tglBookingEditor.Booking.fees[indexFee].quantity;
@@ -415,7 +415,7 @@
         }
 
         this.GetFeeAmount = function(feeName){
-            var indexFee = tglBookingEditor.Booking.fees.findIndex(x => x.sku == feeName);
+            var indexFee = tglBookingEditor.Booking.fees.findIndex(function(x) { return x.sku == feeName });
             var feeAmount = 0;
             if(indexFee >= 0){
                 feeAmount = tglBookingEditor.Booking.fees[indexFee].quantity * tglBookingEditor.Booking.fees[indexFee].price;
@@ -467,7 +467,7 @@
             var totalAmount = tglBookingEditor.GetTotalAmount();
             var totalCredit = tglBookingEditor.GetTotalCredit();
             var unusedCredit = Math.max(totalCredit - totalAmount, 0);
-            var indexUnusedCredit = tglBookingEditor.Booking.fees.findIndex(x => x.sku == "unused-points");
+            var indexUnusedCredit = tglBookingEditor.Booking.fees.findIndex(function(x) { return x.sku == "unused-points" });
 
             // If we decided not to keep unused points as available credit, remove them
             if(!tglBookingEditor.Options.MaintainCredit){
@@ -498,8 +498,8 @@
 
         this.GetTotalAmount = function(){
             var excludedFees = ["unused-points", "onsite-payment", "Discount", "Refund"];
-            var totalPrograms = tglBookingEditor.Booking.programs.reduce((a,b) => a + b.price, 0);
-            var totalFees = tglBookingEditor.Booking.fees.filter(f => !excludedFees.includes(f.sku)).reduce((a,b) => a + (b.price * b.quantity), 0);
+            var totalPrograms = tglBookingEditor.Booking.programs.reduce(function(a,b) { return a + b.price }, 0);
+            var totalFees = tglBookingEditor.Booking.fees.filter(function(f) { return !excludedFees.includes(f.sku) }).reduce(function(a,b) { return a + (b.price * b.quantity) }, 0);
 
             return totalPrograms + totalFees;
         }
@@ -512,16 +512,18 @@
             }
 
             var excludedFees = ["onsite-payment", "Discount", "Refund"];
-            var totalProgramsCredit = tglBookingEditor.BookingUnmodified.programs.reduce((a,b) => a + b.price, 0);
-            var totalFeesCredit = tglBookingEditor.BookingUnmodified.fees.filter(f => !excludedFees.includes(f.sku)).reduce((a,b) => a + (b.price * b.quantity), 0);
+            var totalProgramsCredit = tglBookingEditor.BookingUnmodified.programs.reduce(function(a,b) { return a + b.price }, 0);
+            var totalFeesCredit = tglBookingEditor.BookingUnmodified.fees.filter(function(f) { return !excludedFees.includes(f.sku) }).reduce(function(a,b) { return a + (b.price * b.quantity) }, 0);
 
-            var totalOnsitePayment = tglBookingEditor.BookingUnmodified.fees.filter(f => f.sku == "onsite-payment").reduce((a,b) => a + (b.price * b.quantity), 0);
-            var totalOnsitePaymentCurrent = tglBookingEditor.Booking.fees.filter(f => f.sku == "onsite-payment").reduce((a,b) => a + (b.price * b.quantity), 0);
+            var totalOnsitePayment = tglBookingEditor.BookingUnmodified.fees.filter(function(f) { return f.sku == "onsite-payment" }).reduce(function(a,b) { return a + (b.price * b.quantity) }, 0);
+            var totalOnsitePaymentCurrent = tglBookingEditor.Booking.fees.filter(function(f) { return f.sku == "onsite-payment" }).reduce(function(a,b) { return a + (b.price * b.quantity) }, 0);
 
             return totalProgramsCredit + totalFeesCredit + totalOnsitePayment - totalOnsitePaymentCurrent;
         }
 
-        this.GetQuote = function(newProgramId, count = null) {
+        this.GetQuote = function(newProgramId, count) {
+
+            if (typeof count === 'undefined') count = null;
 
             // We want to add a new program to our itinerary and wonder how much that would cost
             // Possibly there was a price change since we made the booking
@@ -533,12 +535,12 @@
                 return;
             }
 
-            var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(p => p.id == newProgramId).length;
-            var countModified = count != null ? count : tglBookingEditor.Booking.programs.filter(p => p.id == newProgramId).length;
+            var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(function(p) { return p.id == newProgramId }).length;
+            var countModified = count != null ? count : tglBookingEditor.Booking.programs.filter(function(p) { return p.id == newProgramId }).length;
             if(countModified < countOriginal) {
                 // We're just adding back a program that was there before
                 // Get the original price
-                return tglBookingEditor.BookingUnmodified.programs.filter(p => p.id == newProgramId).map(p => p.price).sort()[countModified];
+                return tglBookingEditor.BookingUnmodified.programs.filter(function(p) { return p.id == newProgramId }).map(function(p) { return p.price }).sort()[countModified];
             } else {
                 // We added a program that was not there before or more weeks than there were before
                 // We need to find out how much this program costs as of today
@@ -548,7 +550,7 @@
 
                 // Find the latest price that already applies
                 var priceDates = Object.keys(tglContentBuffer.Buffer[newProgramId].price.prices);
-                priceDates = priceDates.filter(x => new Date(x) <= today).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
+                priceDates = priceDates.filter(function(x) { new Date(x) <= today }).sort(function(a,b) { return new Date(a).getTime() - new Date(b).getTime() });
                 var effectiveDate = priceDates[priceDates.length - 1];
 
                 return tglContentBuffer.Buffer[newProgramId].price.prices[effectiveDate];
@@ -599,7 +601,7 @@
                 id: currentProgram.documentId,
                 location: tglContentBuffer.GetProgramLocationString(currentProgram),
                 country: currentProgram.country.name,
-                imageUrl: currentProgram.media.images[0].sizes.find(elem => elem.size === "480, 360").url,
+                imageUrl: currentProgram.media.images[0].sizes.find(function(elem) { return elem.size === "480, 360" }).url,
                 title: currentProgram.documentName,
                 price: tglBookingEditor.Booking.programs[index].price,
                 dateStart: currentWeekDate.toLocaleDateString(),
@@ -762,7 +764,7 @@
                 }
 
                 // Was this program booked before?
-                var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(p => p.id == currentProgram.id).length;
+                var countOriginal = tglBookingEditor.BookingUnmodified.programs.filter(function(p) { return p.id == currentProgram.id }).length;
                 if(programCount[currentProgram.id] <= countOriginal) {
 
                     // Not booked before or for less weeks. So we need to check if the program is still available and bookable.
@@ -798,7 +800,7 @@
                 if (previousProgram == null || previousProgram.documentId != currentProgram.documentId) {
 
                     // We're joining a new program. We need to check starting dates.
-                    var relevantDates = currentProgram.startingDates.startingDates.find(x => x.year == currentWeekDate.getFullYear());
+                    var relevantDates = currentProgram.startingDates.startingDates.find(function(x) { return x.year == currentWeekDate.getFullYear() });
                     if(relevantDates) {
 
                         // Starting dates have been announced already. Lets check if the date matches
@@ -808,10 +810,10 @@
                             // If it doesn't, we need to look at individual dates
                             var currentWeekTicks = currentWeekDate.getTime();
                             var startingDateTicks = currentProgram.startingDates.startingDates
-                                .map(x => x.dates)
+                                .map(function(x) { x.dates })
                                 .reduce(function(a, b){ return a.concat(b); })
-                                .map(d => new Date(d).getTime())
-                                .sort((a, b) => a - b);
+                                .map(function(d) { return new Date(d).getTime() })
+                                .sort(function(a, b) { return a - b });
 
                             if (!startingDateTicks.some(function(x){return x == currentWeekTicks})) {
 
@@ -857,7 +859,7 @@
 
                 /*** CHECK 6: HOLIDAYS ***/
 
-                tglContentBuffer.LoadDocument(currentProgram.documentId, (programDocFull) => {
+                tglContentBuffer.LoadDocument(currentProgram.documentId, function(programDocFull) {
                     // tglContentBuffer.LoadDocument(programDocFull.locations[0].id, (locationDocFull) => {
                     //     tglContentBuffer.LoadDocument(locationDocFull.holidays.id, (holidayDocFull) => {
                             
@@ -909,7 +911,7 @@
 
             if(timerRefreshHistory == null){
                 // No timer set yet. Do so now so the history refreshes every minute.
-                timerRefreshHistory = setInterval(() =>{
+                timerRefreshHistory = setInterval(function() {
 
                     displayHistory();
 
