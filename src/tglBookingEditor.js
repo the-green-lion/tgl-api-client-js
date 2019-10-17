@@ -73,8 +73,10 @@
         }
         
         this.Init = function() {
-            var sourceProgram = this.Options.TemplateProgram.html();            
-            templateProgram = Handlebars.compile(sourceProgram);
+            if(this.Options.TemplateProgram != null){
+                var sourceProgram = this.Options.TemplateProgram.html();            
+                templateProgram = Handlebars.compile(sourceProgram);
+            }
 
             if(this.Options.TemplateHistory != null){
                 var sourceHistory = this.Options.TemplateHistory.html();
@@ -550,7 +552,7 @@
 
                 // Find the latest price that already applies
                 var priceDates = Object.keys(tglContentBuffer.Buffer[newProgramId].price.prices);
-                priceDates = priceDates.filter(function(x) { new Date(x) <= today }).sort(function(a,b) { return new Date(a).getTime() - new Date(b).getTime() });
+                priceDates = priceDates.filter(function(x) { return new Date(x) <= today }).sort(function(a,b) { return new Date(a).getTime() - new Date(b).getTime() });
                 var effectiveDate = priceDates[priceDates.length - 1];
 
                 return tglContentBuffer.Buffer[newProgramId].price.prices[effectiveDate];
